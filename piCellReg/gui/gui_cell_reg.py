@@ -1,3 +1,8 @@
+"""
+nOTE FOR NON AFINE
+https://stackoverflow.com/questions/41133614/how-to-use-qpainter-in-a-qwidget-in-pyqt4
+"""
+
 import numpy as np
 import pyqtgraph as pg
 import sys
@@ -18,7 +23,7 @@ class MainWindow(QtGui.QMainWindow):
 
         # populate layout
         self.make_list()
-        self.make_images()
+        # self.make_images()
 
     def make_list(self):
         self.list_left = ListSession()
@@ -58,7 +63,7 @@ def main():
     app = QtGui.QApplication(sys.argv)
     GUI = MainWindow()
     GUI.show()
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
