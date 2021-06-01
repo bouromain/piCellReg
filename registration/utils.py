@@ -30,60 +30,87 @@ def gaussian_2D(Ly, Lx, sigma=None):
     return G
 
 
-def project_to_polar(im):
+def hanning_window(m, n):
     """
+    make hanning window on an image with m lines and n rows
+
+
+    Parameters
+    ----------
+    m
+        number of rows
+    n
+        number of collumns
+
+    Returns
+    -------
+    hanning_windows
+
+    """
+    c = 1 / 2 * (1 - np.cos((2 * np.pi * np.arange(m)) / m))
+    r = 1 / 2 * (1 - np.cos((2 * np.pi * np.arange(n)) / n))
+
+    return c[:, None] * r[None, :]
+
+
+def polar_wrap(im, scaling="log", output_shape=None):
+    input_shape = im.shape
+    # calculate center
+    center = np.asarray(im.shape[:2]) / 2
+
+    # calculate max diagonal
+    width_in, height_in = np.asarray(im.shape[:2]) / 2
+    radius_max = np.sqrt(width_in ** 2 + height_in ** 2)
+
+    # output shape
+    if output_shape is None:
+        height_out = input_shape[1]
+        width_out = input_shape[0]
+        output_shape = (height_out, width_out)
+    else:
+        assert len(output_shape.shape) == 2, "output_shape should be [width, heigh]"
+        height = output_shape[1]
+        width = output_shape[0]
+
+    # create polar grid
+    if scaling == "linear":
+        r_idx = np.linspace(0, radius_max, width_out)
+    elif scaling == "log":
+        r_idx = np.linspace(0, radius_max, width_out)
+        k = (radius_max) / np.log(width_out / 2)
+        r_idx /= k
+
+    theta_idx = np.linspace(0, (2 * np.pi), height_out, endpoint=False)
+    r_grid, theta_grid = np.meshgrid(r_idx, theta_idx)
+
+    # re-project the polar grid in cartesian pixel coordinates
+    if scaling == "linear":
+        raw, col = polar_to_cartesian(r_grid, theta_grid)
+    elif scaling == "log":
+        raw, col = logpolar_to_cartesian(r_grid, theta_grid)
+    # re-center the coordinates
+    raw += center[0]
+    col += center[1]
+
+    coord = np.vstack((col.flatten(), raw.flatten()))
+
+    image_w = map_coordinates(im, coord, output=float)
+    return np.reshape(image_w, (width_out, height_out))
+
+
+def cartesian_to_logpolar(x, y):
+    """
+    Convert cartesian coordinates to log polar ones
+
     Parameters:
-        - image
+    x,y: float or vectors of cartesian coordinates
 
-    Return:
-        - projection of the image in polar coordinates
+    Returns:
+    r,theta: float or vector of log polar coordinates
 
-
-    Adapted from:
-    https://stackoverflow.com/questions/3798333/image-information-along-a-polar-coordinate-system
-    https://github.com/PyAbel/PyAbel/blob/master/abel/tools/polar.py
-
-    TO DO:
-    Check if image is a 3D stack and loop over it
-    check if we can remove some steps with the r and theta min/max
     """
-
-    Ly, Lx = im.shape[:2]
-    origin_x = Lx // 2
-    origin_y = Ly // 2
-
-    # determine the min and max r and theta coordinates
-    # First, calculate cartesian coordinates
-    xx = np.arange(Lx)
-    yy = np.arange(Ly)
-
-    # center them
-    xx -= origin_x
-    yy -= origin_y
-
-    # convert to polar
-    r, theta = cartesian_to_polar(xx, yy)
-
-    n_bin_r = int(np.ceil(r.max() - r.min()))
-    n_bin_t = int(np.ceil(r.max() - r.min()))
-
-    # create grid coordinate in polar space
-    r_idx = np.linspace(r.min(), r.max(), n_bin_r, endpoint=False)
-    theta_idx = np.linspace(theta.min(), theta.max(), n_bin_t, endpoint=False)
-    theta_grid, r_grid = np.meshgrid(theta_idx, r_idx)
-
-    # re-project the polar grid in pixel coordinates (cartesian)
-    X, Y = polar_to_cartesian(r_grid, theta_grid)
-    X += origin_x
-    Y += origin_y
-
-    # prepare thing for map coordinates
-    coord = np.vstack((X.flatten(), Y.flatten()))
-
-    Z = map_coordinates(im, coord, output=float)
-    Z = np.reshape(Z, (n_bin_r, n_bin_t))
-
-    return Z, r_grid, theta_grid
+    r, theta = cartesian_to_logpolar(x, y)
+    return np.log(r), theta
 
 
 def cartesian_to_polar(x, y):
@@ -115,4 +142,20 @@ def polar_to_cartesian(r, theta):
     """
     x = r * np.cos(theta)
     y = r * np.sin(theta)
+    return x, y
+
+
+def logpolar_to_cartesian(r, theta):
+    """
+    Convert logpolar coordinates to cartesian ones
+
+    Parameters:
+    r,theta: float or vector of polar coordinates
+
+    Returns:
+    x,y: float or vectors of cartesian coordinates
+
+    """
+    x = np.exp(r) * np.cos(theta)
+    y = np.exp(r) * np.sin(theta)
     return x, y
