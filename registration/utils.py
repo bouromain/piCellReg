@@ -69,8 +69,8 @@ def polar_wrap(im, scaling="log", output_shape=None):
         output_shape = (height_out, width_out)
     else:
         assert len(output_shape.shape) == 2, "output_shape should be [width, heigh]"
-        height = output_shape[1]
-        width = output_shape[0]
+        height_out = output_shape[1]
+        width_out = output_shape[0]
 
     # create polar grid
     if scaling == "linear":
