@@ -29,6 +29,6 @@ def find_file_rec(root_name: str, f_name: str, no_duplicate: bool = False):
 
 
 ### for dev
-root_path = "/Users/bouromain/Sync/tmpData/crossReg/4466"
-a = find_file_rec(root_path, "stat.npy")
-print(a)
+# root_path = "/Users/bouromain/Sync/tmpData/crossReg/4466"
+# a = find_file_rec(root_path, "stat.npy")
+# print(a)
