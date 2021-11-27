@@ -11,7 +11,6 @@ except ModuleNotFoundError:
         ImportWarning,
     )
 
-
 def fft2_p(im, pad_fft=False):
     """
     return 2D FFT of a given image

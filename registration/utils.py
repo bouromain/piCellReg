@@ -1,6 +1,7 @@
 import numpy as np
 import bottleneck as bn
 from scipy.ndimage import map_coordinates
+from numpy.fft import ifftshift
 
 
 def gaussian_2D(Ly, Lx, sigma=None):
@@ -77,6 +78,8 @@ def polar_wrap(im, scaling="log", output_shape=None):
         r_idx = np.linspace(0, radius_max, width_out)
     elif scaling == "log":
         r_idx = np.linspace(0, radius_max, width_out)
+        # k is a normalisation factor to correctly scale
+        # the log transform
         k = (radius_max) / np.log(width_out / 2)
         r_idx /= k
 
@@ -109,7 +112,7 @@ def cartesian_to_logpolar(x, y):
     r,theta: float or vector of log polar coordinates
 
     """
-    r, theta = cartesian_to_logpolar(x, y)
+    r, theta = cartesian_to_polar(x, y)
     return np.log(r), theta
 
 
@@ -159,3 +162,58 @@ def logpolar_to_cartesian(r, theta):
     x = np.exp(r) * np.cos(theta)
     y = np.exp(r) * np.sin(theta)
     return x, y
+
+
+# code for sub-pixel registration
+"""
+see 
+https://gist.github.com/IAmSuyogJadhav/6b659413dc821d2fb00f290a189da9c1
+
+to induce sub pixel shift
+"""
+
+
+def _u_dft(data, size_region=None, ups_factor=1, offsets=None):
+    """
+    ...
+    References
+    ----------
+    https://gist.github.com/stefanv/86a7a764ed9fcbf86e25
+    https://github.com/romainFr/SubpixelRegistration.jl/blob/master/src/dftReg.jl
+
+    Manuel Guizar-Sicairos, Samuel T. Thurman, and James R. Fienup,
+    "Efficient subpixel image registration algorithms," Opt. Lett. 33,
+    156-158 (2008).
+    """
+    data = np.asarray(data)
+    if size_region is None:
+        size_region = data.shape
+
+    if len(size_region) != data.ndim:
+        raise ValueError(
+            "upsampled region sizes and data must have the" "same number of dimensions."
+        )
+
+    if offsets is None:
+        offsets = [
+            0,
+        ] * data.ndim
+
+    if len(offsets) != data.ndim:
+        raise ValueError(
+            "offsets sizes and data must have the" "same number of dimensions."
+        )
+
+    kernel_c = np.exp(
+        (-1j * 2 * np.pi / (data.shape[1] * ups_factor))
+        * (ifftshift(np.arange(data.shape[1]))[:, None] - np.floor(data.shape[1] / 2))
+        @ (np.arange(size_region[1])[None, :] - offsets[1])
+    )
+
+    kernel_r = np.exp(
+        (-1j * 2 * np.pi / (data.shape[0] * ups_factor))
+        * (np.arange(size_region[0])[:, None] - offsets[0])
+        @ ifftshift(np.arange(data.shape[0])[None, :] - np.floor(data.shape[0] / 2))
+    )
+
+    return kernel_r @ data @ kernel_c
