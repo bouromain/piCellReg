@@ -3,7 +3,9 @@
 import os
 import argparse
 from piCellReg.io.load import find_file_rec
-from piCellReg.io.Session import Session
+from piCellReg.datatype.Session import Session
+import matplotlib.pyplot as plt
+import time
 
 
 def scan_stat_files(root_path, verbose=True):
@@ -12,8 +14,6 @@ def scan_stat_files(root_path, verbose=True):
         print(f"{len(list_stat)} sessions found, initialing ...")
 
     list_sessions = [Session(p) for p in list_stat]
-
-    [print(len(s._cell_x_pix)) for s in list_sessions]
 
 
 if __name__ == "__main__":
