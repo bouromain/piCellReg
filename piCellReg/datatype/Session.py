@@ -2,6 +2,8 @@ import os.path as op
 from dataclasses import dataclass
 import numpy as np
 
+from piCellReg.registration.utils import shift_coord
+
 
 class Base(object):
     def __post_init__(self):
@@ -23,10 +25,11 @@ class Session(Base):
 
     # basic infos on the session
     _idx: int = None  # index of the session
-    _x_pix: np.ndarray = None  # x pixels of the
-    _y_pix: np.ndarray = None
-    _lam: np.ndarray = None
-    _is_cell: np.ndarray = None
+    _x_pix: list = None  # x pixels of the
+    _y_pix: list = None
+    _lam: list = None
+    _med: list = None
+    _is_cell: np.ndarray = None  # we should populate this vector
 
     _mean_image: np.ndarray = None
     _mean_image_e: np.ndarray = None
@@ -52,6 +55,7 @@ class Session(Base):
             self._x_pix = [s["xpix"][~s["overlap"]] for s in stat]
             self._y_pix = [s["ypix"][~s["overlap"]] for s in stat]
             self._lam = [s["lam"][~s["overlap"]] for s in stat]
+            self._med = [s["med"] for s in stat]
 
             # extract data from ops
             ops = np.load(self._ops_path, allow_pickle=True).item()
@@ -90,22 +94,35 @@ class Session(Base):
         return self._y_pix - self._y_offset[1]
 
     # methods
-    def to_hot_mat(self):
+    def to_hot_mat(self, shifts=(0, 0), theta=0):
         # return logical
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
         idx_cell = np.concatenate(idx_cell)
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
+
+        if shifts != (0, 0) or theta != 0:
+            origin = (self._Lx / 2, self._Ly / 2)
+            x_pix, y_pix = shift_coord(
+                x_pix, y_pix, shifts[0], shifts[1], origin, theta
+            )
         out[idx_cell, y_pix, x_pix] = True
         return out
 
-    def to_lam_mat(self):
+    def to_lam_mat(self, shifts=(0, 0), theta=0):
         # return fluorescence intensity
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
         idx_cell = np.concatenate(idx_cell)
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
+
+        if shifts != (0, 0) or theta != 0:
+            origin = (self._Lx / 2, self._Ly / 2)
+            x_pix, y_pix = shift_coord(
+                x_pix, y_pix, shifts[0], shifts[1], origin, theta
+            )
+
         out[idx_cell, y_pix, x_pix] = self._lam
         return out
