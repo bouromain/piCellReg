@@ -11,6 +11,7 @@ except ModuleNotFoundError:
         ImportWarning,
     )
 
+
 def fft2_p(im, pad_fft=False):
     """
     return 2D FFT of a given image
@@ -52,19 +53,4 @@ def phasecorr(Ga, Gb, max_shift=None, max_rot=15, pad_fft=False):
 
     """
     F = convolve(Ga, Gb, pad_fft=pad_fft)
-    # lcor =
 
-
-# im1 = aln[0]["meanImg"]
-# im2 = aln[1]["meanImg"]
-
-# %timeit r = phase_corr(im1, im2)
-
-# import matplotlib.pyplot as plt
-
-# plt.subplot(131)
-# plt.imshow(im1)
-# plt.subplot(132)
-# plt.imshow(im2)
-# plt.subplot(133)
-# plt.imshow(r)

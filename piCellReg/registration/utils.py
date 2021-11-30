@@ -4,6 +4,44 @@ from scipy.ndimage import map_coordinates
 from numpy.fft import ifftshift
 
 
+def shift_image(im, shifts, rotation=0):
+    # if rotation > 0:
+    #     im_out = rotate(im, angle=rotation)
+    # else:
+    #     im_out = im
+    # im_out = shift(im_out, shifts)
+    sz = im.shape
+    y, x = np.meshgrid(np.arange(sz[0]), np.arange(sz[1]))
+    x, y = x.ravel(), y.ravel()
+    origin = tuple(ss / 2 for ss in sz)
+    coord_n = shift_coord(x, y, shifts[0], shifts[1], origin, rotation)
+    im_out = map_coordinates(im, coord_n)
+    im_out = im_out.reshape((sz))
+
+    return im_out
+
+
+def shift_coord(x, y, shift_x, shift_y, origin, theta):
+
+    # rotate coordinates around the center of the image
+    sin_rad = np.sin(theta)
+    cos_rad = np.cos(theta)
+
+    # recenter coordinates
+    x_c = x - origin[0]
+    y_c = y - origin[1]
+
+    # rotate coordinates
+    xx = x_c * cos_rad + y_c * sin_rad
+    yy = -x_c * sin_rad + y_c * cos_rad
+
+    # shift them and add origin back
+    xx = xx + shift_x + origin[0]
+    yy = yy + shift_y + origin[1]
+
+    return xx, yy
+
+
 def gaussian_2D(Ly, Lx, sigma=None):
     """
     make a gaussian mask of size Ly, Lx to filter fft
@@ -195,9 +233,7 @@ def _u_dft(data, size_region=None, ups_factor=1, offsets=None):
         )
 
     if offsets is None:
-        offsets = [
-            0,
-        ] * data.ndim
+        offsets = [0,] * data.ndim
 
     if len(offsets) != data.ndim:
         raise ValueError(

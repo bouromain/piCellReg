@@ -92,12 +92,20 @@ class Session(Base):
     # methods
     def to_hot_mat(self):
         # return logical
-        out = np.ones((self.n_cells, self.Ly, self.Lx), dtype=bool)
-        out[np.arange(self.n_cells), self._y_pix, self._x_pix] = True
+        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
+        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
+        idx_cell = np.concatenate(idx_cell)
+        x_pix = np.concatenate(self._x_pix)
+        y_pix = np.concatenate(self._y_pix)
+        out[idx_cell, y_pix, x_pix] = True
         return out
 
     def to_lam_mat(self):
         # return fluorescence intensity
-        out = np.ones((self.n_cells, self.Ly, self.Lx), dtype=bool)
-        out[np.arange(self.n_cells), self._y_pix, self._x_pix] = self._lam
+        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
+        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
+        idx_cell = np.concatenate(idx_cell)
+        x_pix = np.concatenate(self._x_pix)
+        y_pix = np.concatenate(self._y_pix)
+        out[idx_cell, y_pix, x_pix] = self._lam
         return out
