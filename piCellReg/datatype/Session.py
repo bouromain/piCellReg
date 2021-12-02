@@ -22,14 +22,16 @@ dict_keys(['ypix', 'lam', 'xpix', 'mrs', 'mrs0', 'compact', 'med', 'npix', 'foot
 class Session(Base):
     _stat_path: str = None
     _ops_path: str = None
+    _iscell_path: str = None
 
     # basic infos on the session
     _idx: int = None  # index of the session
     _x_pix: list = None  # x pixels of the
     _y_pix: list = None
     _lam: list = None
-    _med: list = None
-    _is_cell: np.ndarray = None  # we should populate this vector
+    _x_center: np.ndarray = None
+    _y_center: np.ndarray = None
+    _is_cell: np.ndarray = None
 
     _mean_image: np.ndarray = None
     _mean_image_e: np.ndarray = None
@@ -50,12 +52,16 @@ class Session(Base):
             if self._ops_path is None and op.exists(self._stat_path):
                 self._ops_path = self._stat_path.replace("stat.npy", "ops.npy")
 
+            if self._iscell_path is None and op.exists(self._stat_path):
+                self._iscell_path = self._stat_path.replace("stat.npy", "iscell.npy")
+
             # extract data from stat
             stat = np.load(self._stat_path, allow_pickle=True)
             self._x_pix = [s["xpix"][~s["overlap"]] for s in stat]
             self._y_pix = [s["ypix"][~s["overlap"]] for s in stat]
             self._lam = [s["lam"][~s["overlap"]] for s in stat]
-            self._med = [s["med"] for s in stat]
+            self._y_center = np.array([s["med"][0] for s in stat])
+            self._x_center = np.array([s["med"][1] for s in stat])
 
             # extract data from ops
             ops = np.load(self._ops_path, allow_pickle=True).item()
@@ -64,6 +70,9 @@ class Session(Base):
             self._diameter = ops["diameter"]
             self._Lx = ops["Lx"]
             self._Ly = ops["Ly"]
+
+            # extract iscell
+            self._iscell = np.load(self._iscell_path, allow_pickle=True)[:, 0]
 
     @property
     def diameter(self):
@@ -94,7 +103,7 @@ class Session(Base):
         return self._y_pix - self._y_offset[1]
 
     # methods
-    def to_hot_mat(self, shifts=(0, 0), theta=0):
+    def to_hot_mat(self, shifts=np.array([0, 0]), theta=0):
         # return logical
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
@@ -102,15 +111,19 @@ class Session(Base):
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
-        if shifts != (0, 0) or theta != 0:
+        if (shifts != 0).all() | theta != 0:
             origin = (self._Lx / 2, self._Ly / 2)
             x_pix, y_pix = shift_coord(
                 x_pix, y_pix, shifts[0], shifts[1], origin, theta
             )
+
+        # we could do something a bit more sophisticated here
+        x_pix = np.round(x_pix).astype(np.int32)
+        y_pix = np.round(y_pix).astype(np.int32)
         out[idx_cell, y_pix, x_pix] = True
         return out
 
-    def to_lam_mat(self, shifts=(0, 0), theta=0):
+    def to_lam_mat(self, shifts=np.array([0, 0]), theta=0):
         # return fluorescence intensity
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
@@ -118,11 +131,14 @@ class Session(Base):
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
-        if shifts != (0, 0) or theta != 0:
+        if (shifts != 0).all() | theta != 0:
             origin = (self._Lx / 2, self._Ly / 2)
             x_pix, y_pix = shift_coord(
                 x_pix, y_pix, shifts[0], shifts[1], origin, theta
             )
 
-        out[idx_cell, y_pix, x_pix] = self._lam
+        # we could do something a bit more sophisticated here
+        x_pix = np.round(x_pix).astype(np.int32)
+        y_pix = np.round(y_pix).astype(np.int32)
+        out[idx_cell, y_pix, x_pix] = np.concatenate(self._lam)
         return out

@@ -3,6 +3,9 @@ import bottleneck as bn
 from scipy.ndimage import map_coordinates
 from numpy.fft import ifftshift
 
+# TODO: for the shift of coordinates, we should round them or
+# interpolate them in case of subpixel shift
+
 
 def shift_image(im, shifts, rotation=0):
     # if rotation > 0:
@@ -14,8 +17,8 @@ def shift_image(im, shifts, rotation=0):
     y, x = np.meshgrid(np.arange(sz[0]), np.arange(sz[1]))
     x, y = x.ravel(), y.ravel()
     origin = tuple(ss / 2 for ss in sz)
-    coord_n = shift_coord(x, y, shifts[0], shifts[1], origin, rotation)
-    im_out = map_coordinates(im, coord_n)
+    coord_n = shift_coord(y, x, shifts[1], shifts[0], origin, rotation)
+    im_out = map_coordinates(im, (coord_n[1], coord_n[0]))
     im_out = im_out.reshape((sz))
 
     return im_out
