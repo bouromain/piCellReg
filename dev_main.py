@@ -92,8 +92,57 @@ NNN_idx = np.nonzero(NNN_m)
 # scipy optimise curve fit
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
 
+from scipy.optimize import curve_fit
+
+
+# def sigmoid(x, A, h, slope):
+#     return A / (1 + np.exp((x - h) / slope))
+
+
+def logifunc(x, A, x0, k, off):
+    return A / (1 + np.exp(-k * (x - x0))) + off
+
+
+def lognormal(x, B, mu, sigma):
+    """pdf of lognormal distribution"""
+
+    return (
+        B
+        * np.exp(-((np.log(x) - mu) ** 2) / (2 * sigma ** 2))
+        / (x * sigma * np.sqrt(2 * np.pi))
+    )
+
+
+def fit_func(x, A, x0, k, off, B, mu, sigma):
+    return logifunc(x, A, x0, k, off) + lognormal(x, B, mu, sigma)
+
+
+edges = np.linspace(0.001, 14, 51)
+binned, _ = np.histogram(N_dist, edges, density=True)
+binned = binned + np.finfo(binned.dtype).eps
+centers = np.linspace(0.001, 14, 50)
+
+param_bounds = ([0, 0, 0, 0, 0, 0.0001, 0], [1, np.inf, np.inf, np.inf, 1, 2,])
+sol, err = curve_fit(fit_func, centers, binned, bounds=param_bounds)
+print(sol)
+
+# implement weigth of each distribution
+
+x = np.linspace(0, 14, 100)
+y = logifunc(x, *sol[:4])
+y2 = lognormal(x, *sol[4:])
+y3 = fit_func(x, *sol)
+
+plt.plot(x, y)
+plt.plot(x, y2)
+plt.plot(x, y3)
+plt.plot(centers, binned)
+plt.show()
+
+
 # calculate psame (Not sure I understood...)
 
 # for assignment of psame.look at
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html
 # hungarian algorythm
+
