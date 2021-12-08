@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from skimage.registration import phase_cross_correlation
 import numpy as np
 from scipy import sparse
-from piCellReg.utils.sparse import jacquard_s, overlap_s, corr_stack_s, corr_stack_dense
+from piCellReg.utils.sparse import jacquard_s, overlap_s, corr_stack_s
 import bottleneck as bn
 
 p1 = "/Users/bouromain/Sync/tmpData/crossReg/4466/20201013/stat.npy"
@@ -38,7 +38,6 @@ plt.subplot(223)
 plt.plot(s1._x_center[m1], s1._y_center[m1], "+r", ms=2)
 # plt.imshow(im_s )
 plt.plot(s2._x_center[m2] + offset[0][1], s2._y_center[m2] + offset[0][0], "+k", ms=2)
-
 
 plt.subplot(224)
 plt.imshow(s1._mean_image_e)
@@ -81,10 +80,11 @@ C = corr_stack_s(l1, l2)
 # store a vector of distance and correlation of only the nearest neibour
 NN_idx = bn.nanargmin(dists, axis=1)
 
-# do the same for the other neigbours (dists and correlations )
+# do the same for the other neighbors (dists and correlations )
 NNN_m = dists < 14
 NNN_m[(np.arange(NNN_m.shape[0]), NN_idx)] = False
 NNN_idx = np.nonzero(NNN_m)
+
 
 # for the fit see
 # scipy optimise curve fit

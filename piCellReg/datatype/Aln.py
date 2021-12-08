@@ -11,7 +11,6 @@ class Aln:
 
     # general infos
     _sessions = []
-
     # registration
     _reference_session = None
     _register_matrix = None  # quality of registration between all the pairs

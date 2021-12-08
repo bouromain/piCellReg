@@ -1,7 +1,7 @@
 import os.path as op
 from dataclasses import dataclass
 import numpy as np
-
+from scipy import sparse
 from piCellReg.registration.utils import shift_coord
 
 
