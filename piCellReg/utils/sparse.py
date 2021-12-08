@@ -21,43 +21,6 @@ def std_s(a, axis=-1, ddof=1):
     return np.sqrt(var_s(a, axis=axis, ddof=ddof))
 
 
-def corr_stack_dense(a: sparse.csr_matrix, b: sparse.csr_matrix):
-    """
-    corr_stack_dense calculate the cross correlation matrix between all 
-    the possible pairs of row between each matrices.
-
-    Here the sparse version is certainl not needed as the zscoring
-    will turn the sparse matrix to dense one (if the mean is not zero)
-
-    TODO: change to dense 
-    
-    Parameters
-    ----------
-    a : sparse.csr_matrix
-        first input
-    b : sparse.csr_matrix
-        second input
-
-    Returns
-    -------
-    Correlation matrix
-    """
-    if not sparse.issparse(a):
-        a = sparse.csr_matrix(a)
-    if not sparse.issparse(b):
-        b = sparse.csr_matrix(b)
-
-    n = a.shape[1]
-    if n != b.shape[1]:
-        raise ValueError(f"shape {a.shape} and {b.shape} not aligned")
-
-    # zscore the sparse matrix
-    a_z = (a - a.mean(1)) / std_s(a, axis=1, ddof=1)
-    b_z = (b - b.mean(1)) / std_s(b, axis=1, ddof=1)
-    c = (a_z @ b_z.T) / (n - 1)
-    return c
-
-
 def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     """
     calculate the cross correlation matrix between all 
@@ -84,15 +47,20 @@ def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     https://stackoverflow.com/questions/19231268/correlation-coefficients-for-sparse-matrix-in-python
     """
 
+    if not sparse.issparse(a):
+        a = sparse.csr_matrix(a)
+    if not sparse.issparse(b):
+        b = sparse.csr_matrix(b)
+
     n = a.shape[1]
-    a_m = a.mean(1)
-    b_m = b.mean(1)
+    a_m = a.sum(1)
+    b_m = b.sum(1)
 
     a_s = std_s(a, axis=1, ddof=1)
     b_s = std_s(b, axis=1, ddof=1)
 
     E_XY = a @ b.T
-    E_X_E_Y = a_m.dot(b_m.T)
+    E_X_E_Y = a_m.dot(b_m.T) / n
 
     # compute the covariance matrix
     Cov = (E_XY - E_X_E_Y) / (n - 1)

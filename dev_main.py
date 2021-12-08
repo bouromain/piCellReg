@@ -1,11 +1,10 @@
-from piCellReg.io.load import find_file_rec
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.utils import shift_image
 import matplotlib.pyplot as plt
 from skimage.registration import phase_cross_correlation
 import numpy as np
 from scipy import sparse
-from piCellReg.utils.sparse import jacquard_s, corr_stack_s, overlap_s
+from piCellReg.utils.sparse import jacquard_s, overlap_s, corr_stack_s, corr_stack_dense
 import bottleneck as bn
 
 p1 = "/Users/bouromain/Sync/tmpData/crossReg/4466/20201013/stat.npy"
@@ -64,31 +63,6 @@ lm2 = lm2.reshape((lm2.shape[0], -1))
 l1 = sparse.csr_matrix(lm1, dtype=np.float64)
 l2 = sparse.csr_matrix(lm2, dtype=np.float64)
 
-##### try new corr
-from piCellReg.utils.sparse import std_s
-
-n = l1.shape[1]
-l1_m = l1.mean(1)
-l2_m = l2.mean(1)
-
-l1_s = std_s(l1, axis=1, ddof=1)
-l2_s = std_s(l2, axis=1, ddof=1)
-
-E_XY = l1 @ l2.T
-E_X_E_Y = l1_m.dot(l2_m.T)
-
-Cov = E_XY - E_X_E_Y
-
-Corr = Cov / (l1_s.dot(l2_s.T))
-Corr = Corr / n
-
-C = corr_stack_s(l1, l2)
-
-np.array_equiv(C, Corr)
-
-np.allclose(C, Corr, rtol=1e-2)
-
-# overlap = hm1.astype(np.int8) @ hm2.astype(np.int8).T
 # calculate the distance between all the pairs of cells inbetween two sessions
 x_dists = s1._x_center[:, None] - (s2._x_center[None, :] + offset[0][1])
 y_dists = s1._y_center[:, None] - (s2._y_center[None, :] + offset[0][0])
