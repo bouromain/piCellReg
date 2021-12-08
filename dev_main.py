@@ -61,8 +61,32 @@ lm1 = lm1.reshape((lm1.shape[0], -1))
 lm2 = s2.to_lam_mat(shifts=-offset[0])
 lm2 = lm2.reshape((lm2.shape[0], -1))
 
-l1 = sparse.csr_matrix(lm1, dtype=np.float32)
-l2 = sparse.csr_matrix(lm2, dtype=np.float32)
+l1 = sparse.csr_matrix(lm1, dtype=np.float64)
+l2 = sparse.csr_matrix(lm2, dtype=np.float64)
+
+##### try new corr
+from piCellReg.utils.sparse import std_s
+
+n = l1.shape[1]
+l1_m = l1.mean(1)
+l2_m = l2.mean(1)
+
+l1_s = std_s(l1, axis=1, ddof=1)
+l2_s = std_s(l2, axis=1, ddof=1)
+
+E_XY = l1 @ l2.T
+E_X_E_Y = l1_m.dot(l2_m.T)
+
+Cov = E_XY - E_X_E_Y
+
+Corr = Cov / (l1_s.dot(l2_s.T))
+Corr = Corr / n
+
+C = corr_stack_s(l1, l2)
+
+np.array_equiv(C, Corr)
+
+np.allclose(C, Corr, rtol=1e-2)
 
 # overlap = hm1.astype(np.int8) @ hm2.astype(np.int8).T
 # calculate the distance between all the pairs of cells inbetween two sessions
@@ -122,7 +146,7 @@ binned, _ = np.histogram(N_dist, edges, density=True)
 binned = binned + np.finfo(binned.dtype).eps
 centers = np.linspace(0.001, 14, 50)
 
-param_bounds = ([0, 0, 0, 0, 0, 0.0001, 0], [1, np.inf, np.inf, np.inf, 1, 2,])
+param_bounds = ([0, 0, 0, 0, 0, 0.0001, 0], [1, np.inf, np.inf, np.inf, 1, 2, 4])
 sol, err = curve_fit(fit_func, centers, binned, bounds=param_bounds)
 print(sol)
 

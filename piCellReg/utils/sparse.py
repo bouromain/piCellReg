@@ -21,9 +21,9 @@ def std_s(a, axis=-1, ddof=1):
     return np.sqrt(var_s(a, axis=axis, ddof=ddof))
 
 
-def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
+def corr_stack_dense(a: sparse.csr_matrix, b: sparse.csr_matrix):
     """
-    corr_stack_s calculate the cross correlation atrix between all 
+    corr_stack_dense calculate the cross correlation matrix between all 
     the possible pairs of row between each matrices.
 
     Here the sparse version is certainl not needed as the zscoring
@@ -54,8 +54,53 @@ def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     # zscore the sparse matrix
     a_z = (a - a.mean(1)) / std_s(a, axis=1, ddof=1)
     b_z = (b - b.mean(1)) / std_s(b, axis=1, ddof=1)
+    c = (a_z @ b_z.T) / (n - 1)
+    return c
 
-    return (a_z @ b_z.T) / (n - 1)
+
+def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
+    """
+    calculate the cross correlation matrix between all 
+    the possible pairs of row between each matrices.
+    keep most of the things sparse to have a fast calculation
+
+    Leverage the fact that:
+                - corr(x,y) = cov(x,y) / (sigma(x) sigma(y))
+    
+    Parameters
+    ----------
+    a : sparse.csr_matrix
+        first input
+    b : sparse.csr_matrix
+        second input
+
+    Returns
+    -------
+    Correlation matrix
+
+    Reference
+    ---------
+    https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
+    https://stackoverflow.com/questions/19231268/correlation-coefficients-for-sparse-matrix-in-python
+    """
+
+    n = a.shape[1]
+    a_m = a.mean(1)
+    b_m = b.mean(1)
+
+    a_s = std_s(a, axis=1, ddof=1)
+    b_s = std_s(b, axis=1, ddof=1)
+
+    E_XY = a @ b.T
+    E_X_E_Y = a_m.dot(b_m.T)
+
+    # compute the covariance matrix
+    Cov = (E_XY - E_X_E_Y) / (n - 1)
+
+    # compute the correlation matrix
+    Corr = Cov / (a_s.dot(b_s.T))
+
+    return Corr
 
 
 def overlap_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
