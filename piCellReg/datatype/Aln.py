@@ -2,6 +2,10 @@ import numpy as np
 from dataclasses import dataclass
 from piCellReg.io.load import find_file_rec
 from piCellReg.datatype.Session import Session, Base
+from itertools import combinations
+from skimage.registration import phase_cross_correlation
+from itertools import combinations
+import tqdm
 
 
 @dataclass
@@ -39,6 +43,9 @@ class Aln:
     def __len__(self):
         return self.n_session
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__} object with {self.n_session} sessions"
+
     @property
     def isempty(self):
         if self._sessions == [] or self._sessions is None:
@@ -50,7 +57,7 @@ class Aln:
         if self.isempty:
             return self
 
-        if isinstance(idx, (int, slice, np.ndarray)):
+        if isinstance(idx, (int, slice, np.int32, np.int64, np.ndarray)):
             return self._sessions[idx]
         else:
             raise TypeError(f"Unsupported indexing type {type(idx)}")
@@ -66,3 +73,13 @@ class Aln:
 
         self._index += 1
         return self._sessions[index]
+
+    def register(self):
+        self._registermat = np.empty((self.n_session, self.n_session))
+        self._registermat.fill(np.nan)
+        for i, j in tqdm.tqdm(combinations(np.arange(self.n_session), 2)):
+            tmp = phase_cross_correlation(
+                self[i]._mean_image_e, self[j]._mean_image_e, upsample_factor=100,
+            )
+            self._registermat[i, j] = tmp[0][0]
+        return self

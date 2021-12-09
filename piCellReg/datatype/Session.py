@@ -41,7 +41,6 @@ class Session(Base):
     _Ly: int = None
 
     # variable to set or calculated
-    _diameter: float = None
     _x_offset: float = None
     _y_offset: float = None
     _rotation: float = None

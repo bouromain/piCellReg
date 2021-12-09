@@ -3,7 +3,7 @@
 import argparse
 from piCellReg.io.load import find_file_rec
 from piCellReg.datatype.Session import Session
-from piCellReg.datatype.Aln import SessionGroup
+from piCellReg.datatype.Aln import Aln
 import matplotlib.pyplot as plt
 
 
