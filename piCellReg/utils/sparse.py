@@ -107,4 +107,3 @@ def jacquard_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     divisor = a_sz + b_sz.T
 
     return a_inter_b / (divisor - a_inter_b)
-

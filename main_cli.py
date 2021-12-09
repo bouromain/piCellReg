@@ -3,16 +3,18 @@
 import argparse
 from piCellReg.io.load import find_file_rec
 from piCellReg.datatype.Session import Session
+from piCellReg.datatype.Aln import SessionGroup
 import matplotlib.pyplot as plt
 
 
 def scan_stat_files(root_path, verbose=True):
-    list_stat = find_file_rec(root_path, "stat.npy")
-    if verbose:
-        print(f"{len(list_stat)} sessions found, initialing ...")
+    # list_stat = find_file_rec(root_path, "stat.npy")
+    # if verbose:
+    #     print(f"{len(list_stat)} sessions found, initialing ...")
 
-    list_sessions = [Session(p) for p in list_stat]
-    print(list_stat[1])
+    # list_sessions = [Session(p) for p in list_stat]
+    # print(list_stat[1])
+    a = Aln(root_path)
 
 
 if __name__ == "__main__":

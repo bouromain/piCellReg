@@ -47,8 +47,25 @@ def nearest_neighbor_mask(mat: np.ndarray, axis=-1):
     return out
 
 
-def NNN_mask(mat: np.ndarray, radius: float, axis: int = axis):
-    ...
+def non_nearest_neighbor_mask(mat: np.ndarray, radius: float, axis: int = -1):
+    """
+    find neighbor that are non nearest neighbor in a defined radius 
+    and along a particular dimension
+    
+    Parameters
+    ----------
+    mat : np.ndarray
+        [description]
+    radius : float
+        [description]
+    axis : int, optional
+        [description], by default axis
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     NN_mask = nearest_neighbor_mask(mat, axis=axis)
     N_m = neighbor_mask(mat, radius=radius)
     return N_m & ~NN_mask

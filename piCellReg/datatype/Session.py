@@ -35,6 +35,8 @@ class Session(Base):
 
     _mean_image: np.ndarray = None
     _mean_image_e: np.ndarray = None
+    _maxproj: np.ndarray = None
+    _Vcor: np.ndarray = None
     _Lx: int = None
     _Ly: int = None
 
@@ -46,7 +48,7 @@ class Session(Base):
 
     def __post_init__(self):
         super().__post_init__()
-        # if the object is initialised with a correct stat path
+        # if the object is initialized with a correct stat path
         if self._stat_path is not None:
             # find ops path if needed
             if self._ops_path is None and op.exists(self._stat_path):
@@ -67,12 +69,17 @@ class Session(Base):
             ops = np.load(self._ops_path, allow_pickle=True).item()
             self._mean_image = ops["meanImg"]
             self._mean_image_e = ops["meanImgE"]
+            self._maxproj = ops["max_proj"]
+            self._Vcor = ops["Vcorr"]
             self._diameter = ops["diameter"]
             self._Lx = ops["Lx"]
             self._Ly = ops["Ly"]
 
             # extract iscell
-            self._iscell = np.load(self._iscell_path, allow_pickle=True)[:, 0]
+            if op.exists(self._iscell_path):
+                self._iscell = np.load(self._iscell_path, allow_pickle=True)[:, 0]
+            else:
+                self._iscell = np.ones((self.n_cells))
 
     @property
     def diameter(self):
