@@ -14,7 +14,9 @@ def scan_stat_files(root_path, verbose=True):
 
     # list_sessions = [Session(p) for p in list_stat]
     # print(list_stat[1])
-    a = Aln(root_path)
+    all_session = Aln(root_path)
+    if all_session._registration.isempty():
+        all_session.register()
 
 
 if __name__ == "__main__":

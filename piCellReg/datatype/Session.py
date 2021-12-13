@@ -109,7 +109,7 @@ class Session(Base):
         return self._y_pix - self._y_offset[1]
 
     # methods
-    def to_hot_mat(self, shifts=np.array([0, 0]), theta=0):
+    def to_hot_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
         # return logical
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
@@ -117,11 +117,9 @@ class Session(Base):
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
-        if (shifts != 0).all() | theta != 0:
+        if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (self._Lx / 2, self._Ly / 2)
-            x_pix, y_pix = shift_coord(
-                x_pix, y_pix, shifts[0], shifts[1], origin, theta
-            )
+            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
         # we could do something a bit more sophisticated here
         x_pix = np.round(x_pix).astype(np.int32)
@@ -129,7 +127,7 @@ class Session(Base):
         out[idx_cell, y_pix, x_pix] = True
         return out
 
-    def to_lam_mat(self, shifts=np.array([0, 0]), theta=0):
+    def to_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
         # return fluorescence intensity
         out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
@@ -137,11 +135,9 @@ class Session(Base):
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
-        if (shifts != 0).all() | theta != 0:
+        if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (self._Lx / 2, self._Ly / 2)
-            x_pix, y_pix = shift_coord(
-                x_pix, y_pix, shifts[0], shifts[1], origin, theta
-            )
+            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
         # we could do something a bit more sophisticated here
         x_pix = np.round(x_pix).astype(np.int32)

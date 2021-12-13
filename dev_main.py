@@ -1,3 +1,4 @@
+from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.utils import shift_image
 import matplotlib.pyplot as plt
@@ -13,6 +14,10 @@ p2 = "/Users/bouromain/Sync/tmpData/crossReg/4466/20201014/stat.npy"
 s1 = Session(p1)
 s2 = Session(p2)
 
+###
+s_all = Aln("/Users/bouromain/Sync/tmpData/crossReg/4466/")
+###
+#
 offset = phase_cross_correlation(
     s1._mean_image_e, s2._mean_image_e, upsample_factor=100
 )
@@ -47,7 +52,7 @@ plt.imshow(im_s, alpha=0.5, cmap="magma")
 hm1 = s1.to_hot_mat()
 hm1 = hm1.reshape((hm1.shape[0], -1))
 
-hm2 = s2.to_hot_mat(shifts=-offset[0])
+hm2 = s2.to_hot_mat(x_shift=-offset[0][1], y_shift=-offset[0][0])
 hm2 = hm2.reshape((hm2.shape[0], -1))
 
 h1 = sparse.csr_matrix(hm1, dtype=np.int8)
@@ -56,7 +61,7 @@ h2 = sparse.csr_matrix(hm2, dtype=np.int8)
 lm1 = s1.to_lam_mat()
 lm1 = lm1.reshape((lm1.shape[0], -1))
 
-lm2 = s2.to_lam_mat(shifts=-offset[0])
+lm2 = s2.to_lam_mat(x_shift=-offset[0][1], y_shift=-offset[0][0])
 lm2 = lm2.reshape((lm2.shape[0], -1))
 
 l1 = sparse.csr_matrix(lm1, dtype=np.float64)
@@ -91,10 +96,6 @@ NNN_idx = np.nonzero(NNN_m)
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
 
 from scipy.optimize import curve_fit
-
-
-# def sigmoid(x, A, h, slope):
-#     return A / (1 + np.exp((x - h) / slope))
 
 
 def logifunc(x, A, x0, k, off):

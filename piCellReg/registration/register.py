@@ -8,7 +8,7 @@ def register_im(ref_image: np.ndarray, moving_image: np.ndarray, backend="skimag
 
     if backend == "skimage":
         offset = phase_cross_correlation(
-            ref_image, moving_image=moving_image, upsample_factor=10
+            ref_image, moving_image=moving_image, upsample_factor=100
         )
 
         rotation = None
