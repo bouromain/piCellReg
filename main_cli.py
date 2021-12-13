@@ -17,6 +17,11 @@ def scan_stat_files(root_path, verbose=True):
     all_session = Aln(root_path)
     if all_session._registration.isempty():
         all_session.register()
+        print(
+            f"Best reference session is session {all_session._registration.best_ref()}"
+        )
+    # Now we now the offsets calculate the correlation and
+    # distance between all the sessions and ref session
 
 
 if __name__ == "__main__":

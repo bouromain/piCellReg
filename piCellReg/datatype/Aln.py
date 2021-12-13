@@ -26,7 +26,7 @@ class Registration(Base):
         self._rot_mat.fill(np.nan)
 
     def isempty(self):
-        if self._x_shifts == [] or self._x_shifts is None:
+        if np.isnan(self._x_shifts).all():
             return True
         else:
             return False
