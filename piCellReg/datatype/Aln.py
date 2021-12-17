@@ -56,7 +56,6 @@ class Aln:
     # registration
     _reference_session = None
     _registration = None
-
     # load all available sessions in a root path
     def __post_init__(self):
         list_stat = find_file_rec(self._root_path, "stat.npy")

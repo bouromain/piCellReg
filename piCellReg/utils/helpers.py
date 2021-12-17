@@ -1,8 +1,6 @@
 import numpy as np
 import bottleneck as bn
 
-from dev_main import NNN_idx
-
 
 def neighbor_mask(dist_mat: np.ndarray, radius: float):
     """
@@ -69,3 +67,29 @@ def non_nearest_neighbor_mask(mat: np.ndarray, radius: float, axis: int = -1):
     NN_mask = nearest_neighbor_mask(mat, axis=axis)
     N_m = neighbor_mask(mat, radius=radius)
     return N_m & ~NN_mask
+
+
+def symmetrize(mat, fill_diag_val=np.nan):
+    """
+    symmetrize a matrix by reproducing upper values in the lower 
+    part of the matrix
+
+    Parameters
+    ----------
+    mat : [type]
+        [description]
+    fill_diag_val : [type], optional
+        [description], by default np.nan
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
+    up_tri_idx = np.triu_indices_from(mat, 1)
+    low_tri_idx = np.tril_indices_from(mat, -1)
+
+    mat[low_tri_idx] = mat[up_tri_idx]
+    if fill_diag_val is not None:
+        np.fill_diagonal(mat, fill_diag_val)
+    return mat

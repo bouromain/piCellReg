@@ -5,6 +5,7 @@ from piCellReg.io.load import find_file_rec
 from piCellReg.datatype.Session import Session
 from piCellReg.datatype.Aln import Aln
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def scan_stat_files(root_path, verbose=True):
@@ -22,6 +23,8 @@ def scan_stat_files(root_path, verbose=True):
         )
     # Now we now the offsets calculate the correlation and
     # distance between all the sessions and ref session
+    all_sess_idx = np.arange()
+    all_session._registration.best_ref()
 
 
 if __name__ == "__main__":
