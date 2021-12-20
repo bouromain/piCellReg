@@ -9,11 +9,11 @@ setup(
     packages=["piCellReg"],
     install_requires=[
         "numpy",
+        "scipy",
         "bottleneck",
-        "suite2p",
-        "scanimage-tiff-reader",
-        "h5py",
-        "mat73",
-        "glob",
+        "scikit-image",
+        "tqdm",
+        "matplotlib",
+        "PyQt5",
     ],
 )
