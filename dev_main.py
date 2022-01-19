@@ -1,3 +1,4 @@
+import dis
 from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.utils import shift_image
@@ -6,16 +7,22 @@ from skimage.registration import phase_cross_correlation
 import numpy as np
 from scipy import sparse
 from piCellReg.utils.sparse import jacquard_s, overlap_s, corr_stack_s
+from piCellReg.utils.fit import fit_center_distribution
 import bottleneck as bn
+from pathlib import Path
+import os.path as op
 
-p1 = "/Users/bouromain/Sync/tmpData/crossReg/4466/20201013/stat.npy"
-p2 = "/Users/bouromain/Sync/tmpData/crossReg/4466/20201014/stat.npy"
+user_path = str(Path.home())
+
+p1 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201013/stat.npy")
+p2 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201014/stat.npy")
 
 s1 = Session(p1)
 s2 = Session(p2)
 
 ###
-s_all = Aln("/Users/bouromain/Sync/tmpData/crossReg/4466/")
+p_all = op.join(user_path, "Sync/tmpData/crossReg/4466/")
+s_all = Aln(p_all)
 ###
 #
 offset = phase_cross_correlation(
@@ -67,7 +74,7 @@ lm2 = lm2.reshape((lm2.shape[0], -1))
 l1 = sparse.csr_matrix(lm1, dtype=np.float64)
 l2 = sparse.csr_matrix(lm2, dtype=np.float64)
 
-# calculate the distance between all the pairs of cells inbetween two sessions
+# calculate the distance between all the pairs of cells between two sessions
 x_dists = s1._x_center[:, None] - (s2._x_center[None, :] + offset[0][1])
 y_dists = s1._y_center[:, None] - (s2._y_center[None, :] + offset[0][0])
 
@@ -82,7 +89,7 @@ J = jacquard_s(h1, h2)
 # calculate all the cross correlations of the footprints
 C = corr_stack_s(l1, l2)
 
-# store a vector of distance and correlation of only the nearest neibour
+# store a vector of distance and correlation of only the nearest neighbor
 NN_idx = bn.nanargmin(dists, axis=1)
 
 # do the same for the other neighbors (dists and correlations )
@@ -90,58 +97,53 @@ NNN_m = dists < 14
 NNN_m[(np.arange(NNN_m.shape[0]), NN_idx)] = False
 NNN_idx = np.nonzero(NNN_m)
 
+# fit the distribution
+dist_all, dist_same, dist_different, _, _, _ = fit_center_distribution(N_dist)
 
-# for the fit see
-# scipy optimise curve fit
-# https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
-
-from scipy.optimize import curve_fit
-
-
-def logifunc(x, A, x0, k, off):
-    return A / (1 + np.exp(-k * (x - x0))) + off
-
-
-def lognormal(x, B, mu, sigma):
-    """pdf of lognormal distribution"""
-
-    return (
-        B
-        * np.exp(-((np.log(x) - mu) ** 2) / (2 * sigma ** 2))
-        / (x * sigma * np.sqrt(2 * np.pi))
-    )
+# calculate psame
+def calc_psame(dist_same, dist_all):
+    # find p_same knowing the distance/corr
+    p_same = dist_same / dist_all
+    # here we should may be fit a sigmoid distribution they do a little
+    # trick in their code by setting the first value of the distribution to the second value
+    # see line 73 of compute_centroid_distances_model
+    # this could be explained by the fact that the observed distribution is lognormal due to
+    # inacuracy in the alignment of the two image (we will never or rarely have a perfect alignment,
+    #  thus a drop at zero and a lognormal distribution ). However the real underlying distribution should
+    # be sigmoidal. This could justify a sigmoid fit here
+    # eg we have P_same _obs (lognormal) we want p_same_expected (sigmoid)
+    return p_same
 
 
-def fit_func(x, A, x0, k, off, B, mu, sigma):
-    return logifunc(x, A, x0, k, off) + lognormal(x, B, mu, sigma)
+def psame_matrix(dist_mat, p_same_dist, p_same_centers):
+
+    sz = dist_mat.shape
+    # linearise matrix for simplicity
+    d = dist_mat.ravel()
+    # keep values inside of the p_same centers range
+    mask = np.logical_and(d >= p_same_centers[0], d <= p_same_centers[-1])
+    # find closest p_same center fo each dist_mat values
+    i = bn.nanargmin(abs(d[mask, None] - p_same_centers[None, :]), axis=1)
+
+    # output
+    out = np.empty_like(d)
+    out.fill(np.nan)
+
+    # affect p_same value corresponding to the closest center in the distribution
+    # and reshape the output to the initial shape
+    out[mask] = p_same_dist[i]
+    out = out.reshape(sz)
+    return out
 
 
-edges = np.linspace(0.001, 14, 51)
-binned, _ = np.histogram(N_dist, edges, density=True)
-binned = binned + np.finfo(binned.dtype).eps
-centers = np.linspace(0.001, 14, 50)
+## calculate psame and the psame matrix
+p_same = calc_psame(dist_same, dist_all)
+p_same_centers = np.linspace(0, 15, 100)  # it should be outputed from the fit function
 
-param_bounds = ([0, 0, 0, 0, 0, 0.0001, 0], [1, np.inf, np.inf, np.inf, 1, 2, 4])
-sol, err = curve_fit(fit_func, centers, binned, bounds=param_bounds)
-print(sol)
+putative_same = psame_matrix(dist, p_same, p_same_centers)
 
-# implement weigth of each distribution
-
-x = np.linspace(0, 14, 100)
-y = logifunc(x, *sol[:4])
-y2 = lognormal(x, *sol[4:])
-y3 = fit_func(x, *sol)
-
-plt.plot(x, y)
-plt.plot(x, y2)
-plt.plot(x, y3)
-plt.plot(centers, binned)
-plt.show()
-
-
-# calculate psame (Not sure I understood...)
+plt.plot()
 
 # for assignment of psame.look at
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linear_sum_assignment.html
 # hungarian algorythm
-
