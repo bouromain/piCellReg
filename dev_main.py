@@ -1,4 +1,3 @@
-import dis
 from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.utils import shift_image
@@ -54,6 +53,8 @@ plt.plot(s2._x_center[m2] + offset[0][1], s2._y_center[m2] + offset[0][0], "+k",
 plt.subplot(224)
 plt.imshow(s1._mean_image_e)
 plt.imshow(im_s, alpha=0.5, cmap="magma")
+
+plt.show()
 
 # try overlap
 hm1 = s1.to_hot_mat()
