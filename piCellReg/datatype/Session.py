@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import sparse
 from piCellReg.registration.utils import shift_coord
+import bottleneck as bn
 
 
 class Base(object):
@@ -127,14 +128,14 @@ class Session(Base):
         out[idx_cell, y_pix, x_pix] = True
         return out
 
-    def to_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
-        # return fluorescence intensity
-        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
+    def to_sparse_hot_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
+        # return logical
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
         idx_cell = np.concatenate(idx_cell)
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
+        ##
         if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (self._Lx / 2, self._Ly / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
@@ -142,5 +143,114 @@ class Session(Base):
         # we could do something a bit more sophisticated here
         x_pix = np.round(x_pix).astype(np.int32)
         y_pix = np.round(y_pix).astype(np.int32)
+
+        ###
+        # first linearize totally the index to 1d
+        # this step can be done more simply I guess by saying that:
+        #  (z,y,x) = (z, i) with i = y * size_in_y + x
+        #  But I need to check if I should need to switch x and y depending on F or C order
+        lin_idx = np.ravel_multi_index(
+            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, self.Ly, self.Lx)
+        )
+        # then reshape it to 2D (n_cells, numel_image)
+        idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
+
+        return sparse.csr_matrix((np.ones_like(idx[0]), (idx[0], idx[1])), dtype=bool)
+
+    def to_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
+        # return fluorescence intensity
+        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=np.float32)
+        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
+        idx_cell = np.concatenate(idx_cell)
+        x_pix = np.concatenate(self._x_pix)
+        y_pix = np.concatenate(self._y_pix)
+
+        # we need to shift and interpolate data
+        # we could do something a bit more sophisticated here
+        if (x_shift != 0 and y_shift != 0) | theta != 0:
+            origin = (self._Lx / 2, self._Ly / 2)
+            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+
+        x_pix = np.round(x_pix).astype(np.int32)
+        y_pix = np.round(y_pix).astype(np.int32)
+        ##
         out[idx_cell, y_pix, x_pix] = np.concatenate(self._lam)
         return out
+
+    def to_sparse_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
+        # return fluorescence intensity
+        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
+        idx_cell = np.concatenate(idx_cell)
+        x_pix = np.concatenate(self._x_pix)
+        y_pix = np.concatenate(self._y_pix)
+        data = np.concatenate(self._lam)
+
+        ##
+        if (x_shift != 0 and y_shift != 0) | theta != 0:
+            origin = (self._Lx / 2, self._Ly / 2)
+            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+
+        # we could do something a bit more sophisticated here
+        x_pix = np.round(x_pix).astype(np.int32)
+        y_pix = np.round(y_pix).astype(np.int32)
+
+        ###
+        # first linearize totally the index to 1d
+        # this step can be done more simply I guess by saying that:
+        #  (z,y,x) = (z, i) with i = y * size_in_y + x
+        #  But I need to check if I should need to switch x and y depending on F or C order
+        lin_idx = np.ravel_multi_index(
+            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, self.Ly, self.Lx)
+        )
+        # then reshape it to 2D (n_cells, numel_image)
+        idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
+
+        return sparse.csr_matrix((data, (idx[0], idx[1])), dtype=np.float32)
+
+    def get_roi(self, n=0, margin=10):
+        if n > self.n_cells:
+            raise IndexError(
+                f"Requested value n = {n} greater than the number of cells {self.n_cells}"
+            )
+
+        (x_0, y_0, x_end, y_end) = _bounding_box(
+            self._x_pix[n], self._y_pix[n], margin_x=margin
+        )
+        return self._mean_image_e[y_0:y_end, x_0:x_end]
+
+
+def _bounding_box(
+    x: np.ndarray, y: np.ndarray, margin_x: int = 5, margin_y: int = None
+):
+    """
+         _bounding_box return bounding box  of provided coordinates 
+        with a given margin
+
+        Parameters
+        ----------
+        x : np.ndarray
+            x coordinates
+        y : np.ndarray
+            x coordinates
+        margin_x : int, optional
+            margin we want in the x axis, by default 5
+        margin_y : int, optional
+            [description], by default the same than margin_x
+
+        Returns
+        -------
+        tuple :
+            bounding box coordinates, (x_0,y_0, x_end,y_end)
+            [description]
+        """
+
+    if margin_y is None:
+        margin_y = margin_x
+
+    return (
+        bn.nanmin(x) - margin_x,
+        bn.nanmin(y) - margin_y,
+        bn.nanmax(x) + margin_x,
+        bn.nanmax(y) + margin_y,
+    )
+

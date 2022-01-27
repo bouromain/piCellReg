@@ -2,7 +2,7 @@ from scipy import sparse
 import numpy as np
 
 
-def var_s(a, axis=-1, ddof=1):
+def var_s(a: sparse.csr_matrix, axis=-1, ddof=1):
     """ Variance of sparse matrix a
     var = mean(a**2) - mean(a)**2
     """
@@ -14,7 +14,7 @@ def var_s(a, axis=-1, ddof=1):
     return sig
 
 
-def std_s(a, axis=-1, ddof=1):
+def std_s(a: sparse.csr_matrix, axis=-1, ddof=1):
     """ Standard deviation of sparse matrix a
     std = sqrt(var(a))
     """
