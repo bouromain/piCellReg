@@ -1,14 +1,17 @@
-import numpy as np
 from itertools import combinations
+
+import matplotlib.pyplot as plt
+import numpy as np
 from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.register import register_image
-from piCellReg.utils.sparse import jacquard_s, overlap_s, corr_stack_s
+from piCellReg.registration.utils import shift_image
 from piCellReg.utils.helpers import (
-    neighbor_mask,
     nearest_neighbor_mask,
+    neighbor_mask,
     non_nearest_neighbor_mask,
 )
+from piCellReg.utils.sparse import corr_stack_s, jacquard_s, overlap_s
 
 
 def _calc_dist(x_0, y_0, x_1, y_1, offset):
@@ -61,7 +64,6 @@ class SessionPair:
         if self._relative_offsets is None:
             # make sure we have the offsets done
             self._calc_offset()
-            print(self._relative_offsets)
 
         if self._dist_centers is None:
             self._dist_centers = _calc_dist(
@@ -94,20 +96,50 @@ class SessionPair:
             self._calc_offset()
 
         if self._corr is None:
-            hm0 = self._session_0.to_sparse_lam_mat()
-            hm1 = self._session_1.to_sparse_lam_mat(
+            lm0 = self._session_0.to_sparse_lam_mat()
+            lm1 = self._session_1.to_sparse_lam_mat(
                 x_shift=-self._relative_offsets[1], y_shift=-self._relative_offsets[0]
             )
-            self._corr = corr_stack_s(hm0, hm1)
+            self._corr = corr_stack_s(lm0, lm1)
 
-            return self._overlaps
+            return self._corr
 
+    @property
     def nearest_neighbor(self):
         return nearest_neighbor_mask(self.distcenters())
 
+    @property
     def neighbor_mask(self):
         return neighbor_mask(self.distcenters(), radius=self._max_dist)
 
+    @property
     def non_nearest_neighbor_mask(self):
         return non_nearest_neighbor_mask(self.distcenters(), radius=self._max_dist)
 
+    def plot(self):
+        plt.figure(figsize=(20, 10))
+
+        plt.subplot(1, 2, 1)
+        plt.imshow(self._session_0._mean_image_e, cmap="Reds")
+        s1_s = shift_image(self._session_1._mean_image_e, -self._relative_offsets)
+
+        plt.imshow(s1_s, alpha=0.5, cmap="Greens")
+        plt.axis("off")
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(
+            self._session_0.get_projection(), cmap="Reds", interpolation="nearest"
+        )
+        plt.imshow(
+            self._session_1.get_projection(
+                x_shift=self._relative_offsets[1],
+                y_shift=self._relative_offsets[0],
+                theta=self._rotation,
+            ),
+            alpha=0.5,
+            cmap="Greens",
+            interpolation="nearest",
+        )
+        plt.axis("off")
+
+        plt.show()

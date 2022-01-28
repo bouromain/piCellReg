@@ -141,8 +141,8 @@ class Session(Base):
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
         # we could do something a bit more sophisticated here
-        x_pix = np.round(x_pix).astype(np.int32)
-        y_pix = np.round(y_pix).astype(np.int32)
+        x_pix = np.floor(x_pix).astype(np.int32)
+        y_pix = np.floor(y_pix).astype(np.int32)
 
         ###
         # first linearize totally the index to 1d
@@ -195,8 +195,8 @@ class Session(Base):
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
         # we could do something a bit more sophisticated here
-        x_pix = np.round(x_pix).astype(np.int32)
-        y_pix = np.round(y_pix).astype(np.int32)
+        x_pix = np.floor(x_pix).astype(np.int32)
+        y_pix = np.floor(y_pix).astype(np.int32)
 
         ###
         # first linearized totally the index to 1d
@@ -212,7 +212,7 @@ class Session(Base):
         return sparse.csr_matrix(
             (data, (idx[0], idx[1])),
             shape=(self.n_cells, self.Ly * self.Lx),
-            dtype=np.float32,
+            dtype=data.dtype,
         )
 
     def get_roi(self, n=0, margin=10):
@@ -225,6 +225,17 @@ class Session(Base):
             self._x_pix[n], self._y_pix[n], margin_x=margin
         )
         return self._mean_image_e[y_0:y_end, x_0:x_end]
+
+    def get_projection(
+        self, mask=None, x_shift: float = 0, y_shift: float = 0, theta=0
+    ):
+        if mask is None:
+            mask = np.array(self._iscell, dtype=bool)
+
+        return bn.nansum(
+            self.to_hot_mat(x_shift=x_shift, y_shift=y_shift, theta=theta)[mask, :, :],
+            axis=0,
+        )
 
 
 def _bounding_box(

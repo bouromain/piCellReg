@@ -70,20 +70,55 @@ def fit_center_distribution(
     sol, _ = curve_fit(fit_func, centers, binned, bounds=param_bounds)
 
     # implement weight of each distribution
-    x = np.linspace(0.001, max_dist, n_bins_out)
+    x_est = np.linspace(0.001, max_dist, n_bins_out)
     # calculate distribution of different cells centers
     # and find intersection point of the two same and different
     # cells distribution
 
-    dist_different = logifunc(x, *sol[:4])
+    dist_different = logifunc(x_est, *sol[:4])
     # calculate distribution of same cells centers
-    dist_same = lognormal(x, *sol[4:])
+    dist_same = lognormal(x_est, *sol[4:])
     # calculate full distribution
-    dist_all = fit_func(x, *sol)
+    dist_all = fit_func(x_est, *sol)
 
     intersect = bn.nanmin(centers_out[dist_same > dist_different])
 
     # calculate errors of the model
     E = bn.nansum((fit_func(centers, *sol) - binned) ** 2) / len(dist_all)
 
-    return dist_all, dist_same, dist_different, intersect, E, sol
+    return dist_all, dist_same, dist_different, x_est, intersect, E, sol
+
+
+def calc_psame(dist_same, dist_all):
+    # find p_same knowing the distance/corr
+    p_same = dist_same / dist_all
+    # here we should may be fit a sigmoid distribution they do a little
+    # trick in their code by setting the first value of the distribution to the second value
+    # see line 73 of compute_centroid_distances_model
+    # this could be explained by the fact that the observed distribution is lognormal due to
+    # inacuracy in the alignment of the two image (we will never or rarely have a perfect alignment,
+    #  thus a drop at zero and a lognormal distribution ). However the real underlying distribution should
+    # be sigmoidal. This could justify a sigmoid fit here
+    # eg we have P_same _obs (lognormal) we want p_same_expected (sigmoid)
+    return p_same
+
+
+def psame_matrix(dist_mat, p_same_dist, p_same_centers):
+
+    sz = dist_mat.shape
+    # linearise matrix for simplicity
+    d = dist_mat.ravel()
+    # keep values inside of the p_same centers range
+    mask = np.logical_and(d >= p_same_centers[0], d <= p_same_centers[-1])
+    # find closest p_same center fo each dist_mat values
+    i = bn.nanargmin(abs(d[mask, None] - p_same_centers[None, :]), axis=1)
+
+    # output
+    out = np.empty_like(d)
+    out.fill(np.nan)
+
+    # affect p_same value corresponding to the closest center in the distribution
+    # and reshape the output to the initial shape
+    out[mask] = p_same_dist[i]
+    out = out.reshape(sz)
+    return out
