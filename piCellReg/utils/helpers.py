@@ -37,7 +37,7 @@ def nearest_neighbor_mask(mat: np.ndarray, axis=-1):
     Returns
     -------
     [type]
-        list of index of nearest neighbor
+        mask of nearest neighbor
     """
     NN_idx = bn.nanargmin(mat, axis=axis)
     out = np.zeros_like(mat, dtype=bool)

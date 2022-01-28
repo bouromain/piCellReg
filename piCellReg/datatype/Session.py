@@ -155,7 +155,11 @@ class Session(Base):
         # then reshape it to 2D (n_cells, numel_image)
         idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
 
-        return sparse.csr_matrix((np.ones_like(idx[0]), (idx[0], idx[1])), dtype=bool)
+        return sparse.csr_matrix(
+            (np.ones_like(idx[0]), (idx[0], idx[1])),
+            shape=(self.n_cells, self.Ly * self.Lx),
+            dtype=bool,
+        )
 
     def to_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
         # return fluorescence intensity
@@ -195,7 +199,7 @@ class Session(Base):
         y_pix = np.round(y_pix).astype(np.int32)
 
         ###
-        # first linearize totally the index to 1d
+        # first linearized totally the index to 1d
         # this step can be done more simply I guess by saying that:
         #  (z,y,x) = (z, i) with i = y * size_in_y + x
         #  But I need to check if I should need to switch x and y depending on F or C order
@@ -205,7 +209,11 @@ class Session(Base):
         # then reshape it to 2D (n_cells, numel_image)
         idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
 
-        return sparse.csr_matrix((data, (idx[0], idx[1])), dtype=np.float32)
+        return sparse.csr_matrix(
+            (data, (idx[0], idx[1])),
+            shape=(self.n_cells, self.Ly * self.Lx),
+            dtype=np.float32,
+        )
 
     def get_roi(self, n=0, margin=10):
         if n > self.n_cells:
