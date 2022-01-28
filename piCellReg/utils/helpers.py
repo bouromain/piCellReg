@@ -41,7 +41,12 @@ def nearest_neighbor_mask(mat: np.ndarray, axis=-1):
     """
     NN_idx = bn.nanargmin(mat, axis=axis)
     out = np.zeros_like(mat, dtype=bool)
-    np.put_along_axis(out, NN_idx[None, :], np.ones_like(NN_idx, dtype=bool), axis=axis)
+    if axis == 0:
+        idx = np.arange(0, out.shape[1])
+        out[NN_idx[None, :], idx] = np.ones_like(NN_idx, dtype=bool)
+    elif (axis == 1) or (axis == -1):
+        idx = np.arange(0, out.shape[0])
+        out[idx, NN_idx[None, :]] = np.ones_like(NN_idx, dtype=bool)
     return out
 
 
