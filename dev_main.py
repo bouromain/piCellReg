@@ -4,7 +4,7 @@ from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.datatype.SessionPair import SessionPair
 from piCellReg.registration.utils import shift_image
-
+import bottleneck as bn
 
 user_path = str(Path.home())
 
@@ -17,6 +17,16 @@ s_p = SessionPair(s1, s2)
 dists = s_p.distcenters()
 ov = s_p.overlaps()
 C = s_p.correlations()
+
+## List of all sessions pairs
+from itertools import combinations
+from piCellReg.datatype.Aln import Aln
+
+# make a list of sessions
+p_all = op.join(user_path, "Sync/tmpData/crossReg/4466/")
+sess_list = Aln(p_all)
+
+L = [print(i) for i, s in combinations(enumerate(sess_list), 2)]
 
 
 import matplotlib.pyplot as plt
