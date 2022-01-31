@@ -123,8 +123,8 @@ class Session(Base):
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
         # we could do something a bit more sophisticated here
-        x_pix = np.round(x_pix).astype(np.int32)
-        y_pix = np.round(y_pix).astype(np.int32)
+        x_pix = np.floor(x_pix).astype(np.int32)
+        y_pix = np.floor(y_pix).astype(np.int32)
         out[idx_cell, y_pix, x_pix] = True
         return out
 
@@ -175,8 +175,8 @@ class Session(Base):
             origin = (self._Lx / 2, self._Ly / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
-        x_pix = np.round(x_pix).astype(np.int32)
-        y_pix = np.round(y_pix).astype(np.int32)
+        x_pix = np.floor(x_pix).astype(np.int32)
+        y_pix = np.floor(y_pix).astype(np.int32)
         ##
         out[idx_cell, y_pix, x_pix] = np.concatenate(self._lam)
         return out
