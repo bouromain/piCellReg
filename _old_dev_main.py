@@ -1,4 +1,4 @@
-from piCellReg.datatype.Aln import Aln
+from piCellReg.datatype.SessionList import SessionList
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.utils import shift_image
 import matplotlib.pyplot as plt

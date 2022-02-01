@@ -1,8 +1,5 @@
-from itertools import combinations
-
 import matplotlib.pyplot as plt
 import numpy as np
-from piCellReg.datatype.Aln import Aln
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.register import register_image
 from piCellReg.registration.utils import shift_image
@@ -34,13 +31,17 @@ class SessionPair:
         self._relative_offsets = None  # relative offset s0 to s1
         # next offsets are necessary if the relative offset makes
         # negative index for one or the roi in either of the session
-        self._offsets_session_0 = None
-        self._offsets_session_1 = None
+        self._offsets_session_0 = [0, 0]  # [y,x] numpy format
+        self._offsets_session_1 = [0, 0]  # [y,x] numpy format
+
+        self._Lx_corrected = None
+        self._Ly_corrected = None
 
         self._rotation = 0
         self._dist_centers = None
         self._corr = None
         self._overlaps = None
+        self._jacquard = None
         self._max_dist = 14
 
     def _calc_offset(self, do_rotation=False):
@@ -103,6 +104,20 @@ class SessionPair:
             self._corr = corr_stack_s(lm0, lm1)
 
             return self._corr
+
+    def jacquard(self):
+        if self._relative_offsets is None:
+            self._calc_offset()
+
+        if self._jacquard is None:
+            hm0 = self._session_0.to_sparse_hot_mat()
+            hm1 = self._session_1.to_sparse_hot_mat(
+                x_shift=-self._relative_offsets[1], y_shift=-self._relative_offsets[0]
+            )
+
+            self._jacquard = jacquard_s(hm0, hm1)
+
+            return self._jacquard
 
     @property
     def nearest_neighbor(self):

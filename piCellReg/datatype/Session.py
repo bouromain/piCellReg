@@ -1,9 +1,11 @@
 import os.path as op
 from dataclasses import dataclass
-import numpy as np
-from scipy import sparse
-from piCellReg.registration.utils import shift_coord
+
 import bottleneck as bn
+import numpy as np
+from piCellReg.io.load import find_file_rec
+from piCellReg.registration.utils import shift_coord
+from scipy import sparse
 
 
 class Base(object):
@@ -17,6 +19,24 @@ class Base(object):
 """
 dict_keys(['ypix', 'lam', 'xpix', 'mrs', 'mrs0', 'compact', 'med', 'npix', 'footprint', 'npix_norm', 'overlap', 'ipix', 'radius', 'aspect_ratio', 'skew', 'std'])
 """
+
+
+class Roi:
+    def __init__(
+        self,
+        x_pix=None,
+        y_pix=None,
+        lam=None,
+        x_center=None,
+        y_center=None,
+        Lx=None,
+        Ly=None,
+    ):
+        self._x_pix = x_pix
+        self._y_pix = y_pix
+        self._lam = lam
+        self._x_center = x_center
+        self._y_center = y_center
 
 
 @dataclass
@@ -80,6 +100,9 @@ class Session(Base):
                 self._iscell = np.load(self._iscell_path, allow_pickle=True)[:, 0]
             else:
                 self._iscell = np.ones((self.n_cells))
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__} object with {self.n_cells} ROI"
 
     @property
     def diameter(self):
@@ -236,6 +259,63 @@ class Session(Base):
             self.to_hot_mat(x_shift=x_shift, y_shift=y_shift, theta=theta)[mask, :, :],
             axis=0,
         )
+
+
+@dataclass
+class SessionList:
+    """
+    Wrapper to group all sessions in a root path
+    """
+
+    # general infos
+    _root_path: str = None
+    _sessions = []
+
+    # load all available sessions in a root path
+    def load_from_s2p(self, fpath: str = None):
+        self._root_path = fpath
+        list_stat = find_file_rec(self._root_path, "stat.npy")
+        self._sessions = [Session(p) for p in list_stat]
+
+        return self
+
+    @property
+    def n_session(self):
+        return len(self._sessions)
+
+    def __len__(self):
+        return self.n_session
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__} object with {self.n_session} sessions"
+
+    @property
+    def isempty(self):
+        if self._sessions == [] or self._sessions is None:
+            return True
+        else:
+            return False
+
+    def __getitem__(self, idx):
+        if self.isempty:
+            return self
+
+        if isinstance(idx, (int, slice, np.int32, np.int64, np.ndarray)):
+            return self._sessions[idx]
+        else:
+            raise TypeError(f"Unsupported indexing type {type(idx)}")
+
+    def __iter__(self):
+        self._index = 0
+        return self
+
+    def __next__(self):
+        index = self._index
+        if index > self.n_session - 1:
+            raise StopIteration
+
+        self._index += 1
+        return self._sessions[index]
 
 
 def _bounding_box(
