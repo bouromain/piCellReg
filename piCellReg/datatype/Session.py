@@ -21,24 +21,6 @@ dict_keys(['ypix', 'lam', 'xpix', 'mrs', 'mrs0', 'compact', 'med', 'npix', 'foot
 """
 
 
-class Roi:
-    def __init__(
-        self,
-        x_pix=None,
-        y_pix=None,
-        lam=None,
-        x_center=None,
-        y_center=None,
-        Lx=None,
-        Ly=None,
-    ):
-        self._x_pix = x_pix
-        self._y_pix = y_pix
-        self._lam = lam
-        self._x_center = x_center
-        self._y_center = y_center
-
-
 @dataclass
 class Session(Base):
     _stat_path: str = None
@@ -124,48 +106,67 @@ class Session(Base):
     def Ly(self):
         return self._Ly
 
-    @property
-    def x_pix_off(self):
-        return self._x_pix - self._x_offset
-
-    @property
-    def y_pix_off(self):
-        return self._y_pix - self._y_offset[1]
-
     # methods
-    def to_hot_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
-        # return logical
-        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=bool)
+    def get_coord(self):
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
         idx_cell = np.concatenate(idx_cell)
         x_pix = np.concatenate(self._x_pix)
         y_pix = np.concatenate(self._y_pix)
 
+        return idx_cell, y_pix, x_pix
+
+    def to_hot_mat(
+        self,
+        x_shift: float = 0,
+        y_shift: float = 0,
+        theta=0,
+        L_x: int = None,
+        L_y: int = None,
+    ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
+
+        # return logical
+        out = np.zeros((self.n_cells, L_y, L_x), dtype=bool)
+
+        idx_cell, y_pix, x_pix = self.get_coord()
+
         if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (self._Lx / 2, self._Ly / 2)
+            origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
-        # we could do something a bit more sophisticated here
-        x_pix = np.floor(x_pix).astype(np.int32)
-        y_pix = np.floor(y_pix).astype(np.int32)
+            # we could do something a bit more sophisticated here
+            x_pix = np.floor(x_pix).astype(np.int32)
+            y_pix = np.floor(y_pix).astype(np.int32)
+
         out[idx_cell, y_pix, x_pix] = True
         return out
 
-    def to_sparse_hot_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
-        # return logical
-        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
-        idx_cell = np.concatenate(idx_cell)
-        x_pix = np.concatenate(self._x_pix)
-        y_pix = np.concatenate(self._y_pix)
+    def to_sparse_hot_mat(
+        self,
+        x_shift: float = 0,
+        y_shift: float = 0,
+        theta=0,
+        L_x: int = None,
+        L_y: int = None,
+    ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
 
+        # return logical
+        idx_cell, y_pix, x_pix = self.get_coord()
         ##
         if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (self._Lx / 2, self._Ly / 2)
+            origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
-        # we could do something a bit more sophisticated here
-        x_pix = np.floor(x_pix).astype(np.int32)
-        y_pix = np.floor(y_pix).astype(np.int32)
+            # we could do something a bit more sophisticated here
+            x_pix = np.floor(x_pix).astype(np.int32)
+            y_pix = np.floor(y_pix).astype(np.int32)
 
         ###
         # first linearize totally the index to 1d
@@ -173,53 +174,71 @@ class Session(Base):
         #  (z,y,x) = (z, i) with i = y * size_in_y + x
         #  But I need to check if I should need to switch x and y depending on F or C order
         lin_idx = np.ravel_multi_index(
-            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, self.Ly, self.Lx)
+            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, L_y, L_x)
         )
         # then reshape it to 2D (n_cells, numel_image)
-        idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
+        idx = np.unravel_index(lin_idx, (self.n_cells, L_y * L_x))
 
         return sparse.csr_matrix(
             (np.ones_like(idx[0]), (idx[0], idx[1])),
-            shape=(self.n_cells, self.Ly * self.Lx),
+            shape=(self.n_cells, L_y * L_x),
             dtype=bool,
         )
 
-    def to_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
+    def to_lam_mat(
+        self,
+        x_shift: float = 0,
+        y_shift: float = 0,
+        theta=0,
+        L_x: int = None,
+        L_y: int = None,
+    ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
+
         # return fluorescence intensity
-        out = np.zeros((self.n_cells, self.Ly, self.Lx), dtype=np.float32)
-        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
-        idx_cell = np.concatenate(idx_cell)
-        x_pix = np.concatenate(self._x_pix)
-        y_pix = np.concatenate(self._y_pix)
+        out = np.zeros((self.n_cells, L_y, L_x), dtype=np.float32)
+        idx_cell, y_pix, x_pix = self.get_coord()
 
         # we need to shift and interpolate data
         # we could do something a bit more sophisticated here
         if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (self._Lx / 2, self._Ly / 2)
+            origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+            x_pix = np.floor(x_pix).astype(np.int32)
+            y_pix = np.floor(y_pix).astype(np.int32)
 
-        x_pix = np.floor(x_pix).astype(np.int32)
-        y_pix = np.floor(y_pix).astype(np.int32)
         ##
         out[idx_cell, y_pix, x_pix] = np.concatenate(self._lam)
         return out
 
-    def to_sparse_lam_mat(self, x_shift: float = 0, y_shift: float = 0, theta=0):
+    def to_sparse_lam_mat(
+        self,
+        x_shift: float = 0,
+        y_shift: float = 0,
+        theta=0,
+        L_x: int = None,
+        L_y: int = None,
+    ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
+
+        idx_cell, y_pix, x_pix = self.get_coord()
         # return fluorescence intensity
-        idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
-        idx_cell = np.concatenate(idx_cell)
-        x_pix = np.concatenate(self._x_pix)
-        y_pix = np.concatenate(self._y_pix)
         data = np.concatenate(self._lam)
 
         ##
         if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (self._Lx / 2, self._Ly / 2)
+            origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
-        # we could do something a bit more sophisticated here
-        x_pix = np.floor(x_pix).astype(np.int32)
-        y_pix = np.floor(y_pix).astype(np.int32)
+            # we could do something a bit more sophisticated here
+            x_pix = np.floor(x_pix).astype(np.int32)
+            y_pix = np.floor(y_pix).astype(np.int32)
 
         ###
         # first linearized totally the index to 1d
@@ -227,15 +246,13 @@ class Session(Base):
         #  (z,y,x) = (z, i) with i = y * size_in_y + x
         #  But I need to check if I should need to switch x and y depending on F or C order
         lin_idx = np.ravel_multi_index(
-            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, self.Ly, self.Lx)
+            np.vstack((idx_cell, y_pix, x_pix)), (self.n_cells, L_y, L_x)
         )
         # then reshape it to 2D (n_cells, numel_image)
-        idx = np.unravel_index(lin_idx, (self.n_cells, self.Ly * self.Lx))
+        idx = np.unravel_index(lin_idx, (self.n_cells, L_y * L_x))
 
         return sparse.csr_matrix(
-            (data, (idx[0], idx[1])),
-            shape=(self.n_cells, self.Ly * self.Lx),
-            dtype=data.dtype,
+            (data, (idx[0], idx[1])), shape=(self.n_cells, L_y * L_x), dtype=data.dtype,
         )
 
     def get_roi(self, n=0, margin=10):
@@ -250,13 +267,26 @@ class Session(Base):
         return self._mean_image_e[y_0:y_end, x_0:x_end]
 
     def get_projection(
-        self, mask=None, x_shift: float = 0, y_shift: float = 0, theta=0
+        self,
+        mask=None,
+        x_shift: float = 0,
+        y_shift: float = 0,
+        theta=0,
+        L_x: int = None,
+        L_y: int = None,
     ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
+
         if mask is None:
             mask = np.array(self._iscell, dtype=bool)
 
         return bn.nansum(
-            self.to_hot_mat(x_shift=x_shift, y_shift=y_shift, theta=theta)[mask, :, :],
+            self.to_hot_mat(
+                x_shift=x_shift, y_shift=y_shift, theta=theta, L_x=L_x, L_y=L_y
+            )[mask, :, :],
             axis=0,
         )
 

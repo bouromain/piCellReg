@@ -56,8 +56,16 @@ class SessionPair:
                 self._session_0._mean_image_e, self._session_1._mean_image_e
             )
 
+        # Check if the shift make some of the coordinates/ pixel index to be out of the
+        # image range or negative
+
+        # if (self._relative_offsets !=0).any()
+        #     origin = (self._Lx / 2, self._Ly / 2)
+        #     x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+
         # compute the absolute offset for each session
         # a little trick is to always use a positive offset.
+
         # if any(self._relative_offsets < 0):
         #     ...
 
