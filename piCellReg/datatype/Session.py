@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import bottleneck as bn
 import numpy as np
 from piCellReg.io.load import find_file_rec
-from piCellReg.registration.utils import shift_coord
 from scipy import sparse
 
 
@@ -44,9 +43,11 @@ class Session(Base):
     _Ly: int = None
 
     # variable to set or calculated
-    _x_offset: float = None
-    _y_offset: float = None
-    _rotation: float = None
+    _x_offset: float = 0
+    _y_offset: float = 0
+    _rotation: float = 0
+    _Lx_corrected: int = None
+    _Ly_corrected: int = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -106,22 +107,104 @@ class Session(Base):
     def Ly(self):
         return self._Ly
 
-    # methods
-    def get_coord(self):
+    @property
+    def x_pix(self, idx):
+        if idx >= 0 and idx < self.n_cells:
+            return self._x_pix[idx]
+
+    @property
+    def x_pix_all(self):
+        return np.concatenate(self._x_pix)
+
+    @property
+    def y_pix(self, idx):
+        if idx >= 0 and idx < self.n_cells:
+            return self._y_pix[idx]
+
+    @property
+    def y_pix_all(self):
+        return np.concatenate(self._y_pix)
+
+    @property
+    def idx_cell_all(self):
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
-        idx_cell = np.concatenate(idx_cell)
-        x_pix = np.concatenate(self._x_pix)
-        y_pix = np.concatenate(self._y_pix)
+        return np.concatenate(idx_cell)
+
+    @property
+    def x_offset(self):
+        return self._x_offset
+
+    @x_offset.setter
+    def x_offset(self, val: float):
+        self._x_offset = val
+
+    @property
+    def y_offset(self):
+        return self._y_offset
+
+    @y_offset.setter
+    def y_offset(self, val: float):
+        self._y_offset = val
+
+    @property
+    def rotation(self):
+        return self._y_offset
+
+    @rotation.setter
+    def rotation(self, val: float):
+        self._rotation = val
+
+    @property
+    def Lx_corrected(self):
+        if self._Lx_corrected is None:
+            return self._Lx
+        else:
+            return self._Lx_corrected
+
+    @property
+    def Ly_corrected(self):
+        if self._Ly_corrected is None:
+            return self._Ly
+        else:
+            return self._Ly_corrected
+
+    # methods
+    def get_coordinates(
+        self, corrected: bool = False, L_x_in: int = None, L_y_in: int = None,
+    ):
+        if L_x_in is None:
+            L_x = self.Lx
+        if L_y_in is None:
+            L_y = self.Ly
+
+        idx_cell = self.idx_cell_all
+
+        if corrected:
+            origin = (L_x / 2, L_y / 2)
+            x_pix, y_pix = _shift_coord(
+                self.x_pix_all,
+                self.y_pix_all,
+                self.x_offset,
+                self.y_offset,
+                origin,
+                self.rotation,
+            )
+
+            # we want indexes so we floor the output of the previous function
+            x_pix = np.floor(x_pix).astype(np.int32)
+            y_pix = np.floor(y_pix).astype(np.int32)
+
+            # now if the shift we performed leads to out of range index
+            # (out of the initial image), we correct the range too
+
+            # First check of we have a problem
+
+            a_problem = [(x_pix < 0).any() | y_pix < 0]
 
         return idx_cell, y_pix, x_pix
 
     def to_hot_mat(
-        self,
-        x_shift: float = 0,
-        y_shift: float = 0,
-        theta=0,
-        L_x: int = None,
-        L_y: int = None,
+        self, corrected=False, L_x: int = None, L_y: int = None,
     ):
         if L_x is None:
             L_x = self.Lx
@@ -131,16 +214,7 @@ class Session(Base):
         # return logical
         out = np.zeros((self.n_cells, L_y, L_x), dtype=bool)
 
-        idx_cell, y_pix, x_pix = self.get_coord()
-
-        if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
-
-            # we could do something a bit more sophisticated here
-            x_pix = np.floor(x_pix).astype(np.int32)
-            y_pix = np.floor(y_pix).astype(np.int32)
-
+        idx_cell, y_pix, x_pix = self.get_coordinates(corrected=corrected)
         out[idx_cell, y_pix, x_pix] = True
         return out
 
@@ -158,11 +232,11 @@ class Session(Base):
             L_y = self.Ly
 
         # return logical
-        idx_cell, y_pix, x_pix = self.get_coord()
+        idx_cell, y_pix, x_pix = self.get_coordinates(corrected=corrected)
         ##
         if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
             # we could do something a bit more sophisticated here
             x_pix = np.floor(x_pix).astype(np.int32)
@@ -200,13 +274,13 @@ class Session(Base):
 
         # return fluorescence intensity
         out = np.zeros((self.n_cells, L_y, L_x), dtype=np.float32)
-        idx_cell, y_pix, x_pix = self.get_coord()
+        idx_cell, y_pix, x_pix = self.get_coordinates()
 
         # we need to shift and interpolate data
         # we could do something a bit more sophisticated here
         if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
             x_pix = np.floor(x_pix).astype(np.int32)
             y_pix = np.floor(y_pix).astype(np.int32)
 
@@ -227,14 +301,14 @@ class Session(Base):
         if L_y is None:
             L_y = self.Ly
 
-        idx_cell, y_pix, x_pix = self.get_coord()
+        idx_cell, y_pix, x_pix = self.get_coordinates()
         # return fluorescence intensity
         data = np.concatenate(self._lam)
 
         ##
         if (x_shift != 0 and y_shift != 0) | theta != 0:
             origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
 
             # we could do something a bit more sophisticated here
             x_pix = np.floor(x_pix).astype(np.int32)
@@ -383,3 +457,23 @@ def _bounding_box(
         bn.nanmax(y) + margin_y,
     )
 
+
+def _shift_coord(x, y, shift_x, shift_y, origin, theta):
+
+    # rotate coordinates around the center of the image
+    sin_rad = np.sin(theta)
+    cos_rad = np.cos(theta)
+
+    # recenter coordinates
+    x_c = x - origin[0]
+    y_c = y - origin[1]
+
+    # rotate coordinates
+    xx = x_c * cos_rad + y_c * sin_rad
+    yy = -x_c * sin_rad + y_c * cos_rad
+
+    # shift them and add origin back
+    xx = xx + shift_x + origin[0]
+    yy = yy + shift_y + origin[1]
+
+    return xx, yy
