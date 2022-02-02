@@ -9,6 +9,7 @@ from piCellReg.utils.helpers import (
     non_nearest_neighbor_mask,
 )
 from piCellReg.utils.sparse import corr_stack_s, jacquard_s, overlap_s
+import bottleneck as bn
 
 
 class SessionPair:
@@ -25,8 +26,8 @@ class SessionPair:
         self._offsets_session_0 = [0, 0]  # [y,x] numpy format
         self._offsets_session_1 = [0, 0]  # [y,x] numpy format
 
-        self._Lx_corrected = None
-        self._Ly_corrected = None
+        self._Lx_corrected = bn.nanmax([self._session_0.Lx, self._session_1.Lx])
+        self._Ly_corrected = bn.nanmax([self._session_0.Ly, self._session_1.Ly])
 
         self._rotation = 0
         self._dist_centers = None
@@ -47,18 +48,41 @@ class SessionPair:
                 self._session_0._mean_image_e, self._session_1._mean_image_e
             )
 
-        # Check if the shift make some of the coordinates/ pixel index to be out of the
-        # image range or negative
+        # as we take consider the session 1 as the "moving image"
+        self._offsets_session_1 = self._relative_offsets
 
-        # if (self._relative_offsets !=0).any()
-        #     origin = (self._Lx / 2, self._Ly / 2)
-        #     x_pix, y_pix = shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+        # Check if the shift make some of the coordinates/ pixel indexes to
+        # be out of the image range or negative
+        _, y_pix_corr, x_pix_corr = self._session_1.get_coordinates(
+            x_offset=self._offsets_session_1[1],
+            y_offset=self._offsets_session_1[0],
+            rotation=self._rotation,
+        )
 
-        # compute the absolute offset for each session
-        # a little trick is to always use a positive offset.
+        min_y = bn.nanmin(y_pix_corr)
+        max_y = bn.nanmax(y_pix_corr)
 
-        # if any(self._relative_offsets < 0):
-        #     ...
+        min_x = bn.nanmin(x_pix_corr)
+        max_x = bn.nanmax(x_pix_corr)
+
+        if min_y < 0:
+            # fix the y offset if negative
+            self._offsets_session_0[0] += abs(min_y)
+            self._offsets_session_1[0] += abs(min_y)
+            max_y += abs(min_y)
+
+        if min_x < 0:
+            # fix the y offset if negative
+            self._offsets_session_0[1] += abs(min_x)
+            self._offsets_session_1[1] += abs(min_x)
+            max_x += abs(min_x)
+
+        if max_y > self._Ly_corrected:
+            # fix the y range if larger than the initial one
+            self._Ly_corrected = max_y
+        if max_x > self._Lx_corrected:
+            # fix the y range if larger than the initial one
+            self._Lx_corrected = max_x
 
     def distcenters(self):
         if self._relative_offsets is None:
@@ -73,7 +97,6 @@ class SessionPair:
             y_dists = self._session_0._y_center[:, None] - (
                 self._session_1._y_center[None, :] + self._relative_offsets[0]
             )
-
             # calculate distance between all the pairs of cells
             self._dist_centers = np.sqrt(x_dists ** 2 + y_dists ** 2)
         return self._dist_centers
@@ -84,9 +107,19 @@ class SessionPair:
             self._calc_offset()
 
         if self._overlaps is None:
-            hm0 = self._session_0.to_sparse_hot_mat()
+            hm0 = self._session_0.to_sparse_hot_mat(
+                x_shift=-self._offsets_session_0[1],
+                y_shift=-self._offsets_session_0[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
+            )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_shift=-self._relative_offsets[1], y_shift=-self._relative_offsets[0]
+                x_shift=-self._offsets_session_1[1],
+                y_shift=-self._offsets_session_1[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
             )
 
             self._overlaps = overlap_s(hm0, hm1)
@@ -99,9 +132,19 @@ class SessionPair:
             self._calc_offset()
 
         if self._corr is None:
-            lm0 = self._session_0.to_sparse_lam_mat()
+            lm0 = self._session_0.to_sparse_lam_mat(
+                x_shift=-self._offsets_session_0[1],
+                y_shift=-self._offsets_session_0[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
+            )
             lm1 = self._session_1.to_sparse_lam_mat(
-                x_shift=-self._relative_offsets[1], y_shift=-self._relative_offsets[0]
+                x_shift=-self._offsets_session_1[1],
+                y_shift=-self._offsets_session_1[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
             )
             self._corr = corr_stack_s(lm0, lm1)
 
@@ -112,9 +155,19 @@ class SessionPair:
             self._calc_offset()
 
         if self._jacquard is None:
-            hm0 = self._session_0.to_sparse_hot_mat()
+            hm0 = self._session_0.to_sparse_hot_mat(
+                x_shift=-self._offsets_session_0[1],
+                y_shift=-self._offsets_session_0[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
+            )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_shift=-self._relative_offsets[1], y_shift=-self._relative_offsets[0]
+                x_shift=-self._offsets_session_1[1],
+                y_shift=-self._offsets_session_1[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
             )
 
             self._jacquard = jacquard_s(hm0, hm1)
@@ -145,13 +198,23 @@ class SessionPair:
 
         plt.subplot(1, 2, 2)
         plt.imshow(
-            self._session_0.get_projection(), cmap="Reds", interpolation="nearest"
+            self._session_0.get_projection(
+                x_shift=-self._offsets_session_0[1],
+                y_shift=-self._offsets_session_0[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
+            ),
+            cmap="Reds",
+            interpolation="nearest",
         )
         plt.imshow(
             self._session_1.get_projection(
-                x_shift=self._relative_offsets[1],
-                y_shift=self._relative_offsets[0],
-                theta=self._rotation,
+                x_shift=-self._offsets_session_1[1],
+                y_shift=-self._offsets_session_1[0],
+                rotation=self._rotation,
+                L_x=self._Lx_corrected,
+                L_y=self._Ly_corrected,
             ),
             alpha=0.5,
             cmap="Greens",
