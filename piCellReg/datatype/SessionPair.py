@@ -11,15 +11,6 @@ from piCellReg.utils.helpers import (
 from piCellReg.utils.sparse import corr_stack_s, jacquard_s, overlap_s
 
 
-def _calc_dist(x_0, y_0, x_1, y_1, offset):
-    # calculate the distance between all the pairs of cells between two sessions
-    x_dists = x_0[:, None] - (x_1[None, :] + offset[1])
-    y_dists = y_0[:, None] - (y_1[None, :] + offset[0])
-
-    # calculate distance between all the pairs of cells
-    return np.sqrt(x_dists ** 2 + y_dists ** 2)
-
-
 class SessionPair:
     def __init__(
         self, s0: Session = None, s1: Session = None, id_s0: int = 0, id_s1: int = 1
@@ -28,7 +19,7 @@ class SessionPair:
         self._session_0 = s0
         self._session_1 = s1
 
-        self._relative_offsets = None  # relative offset s0 to s1
+        self._relative_offsets = [0, 0]  # [y,x] relative offset s0 to s1
         # next offsets are necessary if the relative offset makes
         # negative index for one or the roi in either of the session
         self._offsets_session_0 = [0, 0]  # [y,x] numpy format
@@ -75,13 +66,16 @@ class SessionPair:
             self._calc_offset()
 
         if self._dist_centers is None:
-            self._dist_centers = _calc_dist(
-                self._session_0._x_center,
-                self._session_0._y_center,
-                self._session_1._x_center,
-                self._session_1._y_center,
-                self._relative_offsets,
+            # calculate the distance between all the pairs of cells between two sessions
+            x_dists = self._session_0._x_center[:, None] - (
+                self._session_1._x_center[None, :] + self._relative_offsets[1]
             )
+            y_dists = self._session_0._y_center[:, None] - (
+                self._session_1._y_center[None, :] + self._relative_offsets[0]
+            )
+
+            # calculate distance between all the pairs of cells
+            self._dist_centers = np.sqrt(x_dists ** 2 + y_dists ** 2)
         return self._dist_centers
 
     def overlaps(self):
