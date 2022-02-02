@@ -258,7 +258,7 @@ class SessionPair:
         t = np.array([0, (n_bins - 1) / 2, n_bins - 1])
         centers = [-self._max_dist, 0, self._max_dist]
 
-        plt.imshow(gaussian_filter(H, 2))
+        plt.imshow(H)
 
         plt.xlabel(" x Displacement")
         plt.ylabel(" y Displacement")
