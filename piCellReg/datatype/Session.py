@@ -42,13 +42,6 @@ class Session(Base):
     _Lx: int = None
     _Ly: int = None
 
-    # variable to set or calculated
-    _x_offset: float = 0
-    _y_offset: float = 0
-    _rotation: float = 0
-    _Lx_corrected: int = None
-    _Ly_corrected: int = None
-
     def __post_init__(self):
         super().__post_init__()
         # if the object is initialized with a correct stat path
@@ -109,6 +102,7 @@ class Session(Base):
 
     @property
     def x_pix(self, idx):
+        # weak check for the validity of the index
         if idx >= 0 and idx < self.n_cells:
             return self._x_pix[idx]
 
@@ -118,6 +112,7 @@ class Session(Base):
 
     @property
     def y_pix(self, idx):
+        # weak check for the validity of the index
         if idx >= 0 and idx < self.n_cells:
             return self._y_pix[idx]
 
@@ -131,46 +126,22 @@ class Session(Base):
         return np.concatenate(idx_cell)
 
     @property
-    def x_offset(self):
-        return self._x_offset
-
-    @x_offset.setter
-    def x_offset(self, val: float):
-        self._x_offset = val
+    def lam(self, idx):
+        if idx >= 0 and idx < self.n_cells:
+            return self._lam[idx]
 
     @property
-    def y_offset(self):
-        return self._y_offset
-
-    @y_offset.setter
-    def y_offset(self, val: float):
-        self._y_offset = val
-
-    @property
-    def rotation(self):
-        return self._y_offset
-
-    @rotation.setter
-    def rotation(self, val: float):
-        self._rotation = val
-
-    @property
-    def Lx_corrected(self):
-        if self._Lx_corrected is None:
-            return self._Lx
-        else:
-            return self._Lx_corrected
-
-    @property
-    def Ly_corrected(self):
-        if self._Ly_corrected is None:
-            return self._Ly
-        else:
-            return self._Ly_corrected
+    def lam_all(self):
+        return np.concatenate(self._lam)
 
     # methods
     def get_coordinates(
-        self, corrected: bool = False, L_x_in: int = None, L_y_in: int = None,
+        self,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
+        L_x_in: int = None,
+        L_y_in: int = None,
     ):
         if L_x_in is None:
             L_x = self.Lx
@@ -179,15 +150,10 @@ class Session(Base):
 
         idx_cell = self.idx_cell_all
 
-        if corrected:
+        if (x_offset != 0) or (y_offset != 0) or (rotation != 0):
             origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = _shift_coord(
-                self.x_pix_all,
-                self.y_pix_all,
-                self.x_offset,
-                self.y_offset,
-                origin,
-                self.rotation,
+                self.x_pix_all, self.y_pix_all, x_offset, y_offset, origin, rotation,
             )
 
             # we want indexes so we floor the output of the previous function
@@ -198,31 +164,15 @@ class Session(Base):
             # (out of the initial image), we correct the range too
 
             # First check of we have a problem
-
-            a_problem = [(x_pix < 0).any() | y_pix < 0]
+            # a_problem = [(x_pix < 0).any() | y_pix < 0]
 
         return idx_cell, y_pix, x_pix
 
     def to_hot_mat(
-        self, corrected=False, L_x: int = None, L_y: int = None,
-    ):
-        if L_x is None:
-            L_x = self.Lx
-        if L_y is None:
-            L_y = self.Ly
-
-        # return logical
-        out = np.zeros((self.n_cells, L_y, L_x), dtype=bool)
-
-        idx_cell, y_pix, x_pix = self.get_coordinates(corrected=corrected)
-        out[idx_cell, y_pix, x_pix] = True
-        return out
-
-    def to_sparse_hot_mat(
         self,
-        x_shift: float = 0,
-        y_shift: float = 0,
-        theta=0,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
         L_x: int = None,
         L_y: int = None,
     ):
@@ -232,17 +182,32 @@ class Session(Base):
             L_y = self.Ly
 
         # return logical
-        idx_cell, y_pix, x_pix = self.get_coordinates(corrected=corrected)
-        ##
-        if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
+        out = np.zeros((self.n_cells, L_y, L_x), dtype=bool)
 
-            # we could do something a bit more sophisticated here
-            x_pix = np.floor(x_pix).astype(np.int32)
-            y_pix = np.floor(y_pix).astype(np.int32)
+        idx_cell, y_pix, x_pix = self.get_coordinates(
+            x_offset=x_offset, y_offset=y_offset, rotation=rotation
+        )
+        out[idx_cell, y_pix, x_pix] = True
+        return out
 
-        ###
+    def to_sparse_hot_mat(
+        self,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
+        L_x: int = None,
+        L_y: int = None,
+    ):
+        if L_x is None:
+            L_x = self.Lx
+        if L_y is None:
+            L_y = self.Ly
+
+        # get coordinates
+        idx_cell, y_pix, x_pix = self.get_coordinates(
+            x_offset=x_offset, y_offset=y_offset, rotation=rotation
+        )
+
         # first linearize totally the index to 1d
         # this step can be done more simply I guess by saying that:
         #  (z,y,x) = (z, i) with i = y * size_in_y + x
@@ -261,9 +226,9 @@ class Session(Base):
 
     def to_lam_mat(
         self,
-        x_shift: float = 0,
-        y_shift: float = 0,
-        theta=0,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
         L_x: int = None,
         L_y: int = None,
     ):
@@ -274,25 +239,18 @@ class Session(Base):
 
         # return fluorescence intensity
         out = np.zeros((self.n_cells, L_y, L_x), dtype=np.float32)
-        idx_cell, y_pix, x_pix = self.get_coordinates()
+        idx_cell, y_pix, x_pix = self.get_coordinates(
+            x_offset=x_offset, y_offset=y_offset, rotation=rotation
+        )
 
-        # we need to shift and interpolate data
-        # we could do something a bit more sophisticated here
-        if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
-            x_pix = np.floor(x_pix).astype(np.int32)
-            y_pix = np.floor(y_pix).astype(np.int32)
-
-        ##
-        out[idx_cell, y_pix, x_pix] = np.concatenate(self._lam)
+        out[idx_cell, y_pix, x_pix] = self.lam_all
         return out
 
     def to_sparse_lam_mat(
         self,
-        x_shift: float = 0,
-        y_shift: float = 0,
-        theta=0,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
         L_x: int = None,
         L_y: int = None,
     ):
@@ -301,18 +259,9 @@ class Session(Base):
         if L_y is None:
             L_y = self.Ly
 
-        idx_cell, y_pix, x_pix = self.get_coordinates()
-        # return fluorescence intensity
-        data = np.concatenate(self._lam)
-
-        ##
-        if (x_shift != 0 and y_shift != 0) | theta != 0:
-            origin = (L_x / 2, L_y / 2)
-            x_pix, y_pix = _shift_coord(x_pix, y_pix, x_shift, y_shift, origin, theta)
-
-            # we could do something a bit more sophisticated here
-            x_pix = np.floor(x_pix).astype(np.int32)
-            y_pix = np.floor(y_pix).astype(np.int32)
+        idx_cell, y_pix, x_pix = self.get_coordinates(
+            x_offset=x_offset, y_offset=y_offset, rotation=rotation
+        )
 
         ###
         # first linearized totally the index to 1d
@@ -326,7 +275,9 @@ class Session(Base):
         idx = np.unravel_index(lin_idx, (self.n_cells, L_y * L_x))
 
         return sparse.csr_matrix(
-            (data, (idx[0], idx[1])), shape=(self.n_cells, L_y * L_x), dtype=data.dtype,
+            (self.lam_all, (idx[0], idx[1])),
+            shape=(self.n_cells, L_y * L_x),
+            dtype=self.lam_all.dtype,
         )
 
     def get_roi(self, n=0, margin=10):
@@ -336,16 +287,16 @@ class Session(Base):
             )
 
         (x_0, y_0, x_end, y_end) = _bounding_box(
-            self._x_pix[n], self._y_pix[n], margin_x=margin
+            self.x_pix(n), self.y_pix(n), margin_x=margin
         )
         return self._mean_image_e[y_0:y_end, x_0:x_end]
 
     def get_projection(
         self,
         mask=None,
-        x_shift: float = 0,
-        y_shift: float = 0,
-        theta=0,
+        x_offset: float = 0,
+        y_offset: float = 0,
+        rotation: float = 0,
         L_x: int = None,
         L_y: int = None,
     ):
@@ -359,7 +310,11 @@ class Session(Base):
 
         return bn.nansum(
             self.to_hot_mat(
-                x_shift=x_shift, y_shift=y_shift, theta=theta, L_x=L_x, L_y=L_y
+                x_offset=x_offset,
+                y_offset=y_offset,
+                rotation=rotation,
+                L_x=L_x,
+                L_y=L_y,
             )[mask, :, :],
             axis=0,
         )
