@@ -86,7 +86,7 @@ def fit_center_distribution(
     # calculate errors of the model
     E = bn.nansum((fit_func(centers, *sol) - binned) ** 2) / len(dist_all)
 
-    return dist_all, dist_same, dist_different, x_est, intersect, E, sol
+    return (dist_all, dist_same, dist_different, x_est, intersect, E, sol)
 
 
 def calc_psame(dist_same, dist_all):

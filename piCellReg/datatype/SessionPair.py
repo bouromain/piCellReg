@@ -31,7 +31,7 @@ class SessionPair:
 
         self._rotation = 0
         self._dist_centers = None
-        self._corr = None
+        self._correlation = None
         self._overlaps = None
         self._jacquard = None
         self._max_dist = 14
@@ -84,6 +84,7 @@ class SessionPair:
             # fix the y range if larger than the initial one
             self._Lx_corrected = max_x
 
+    @property
     def distcenters(self):
         if all(self._relative_offsets == 0):
             # make sure we have the offsets done
@@ -101,6 +102,7 @@ class SessionPair:
             self._dist_centers = np.sqrt(x_dists ** 2 + y_dists ** 2)
         return self._dist_centers
 
+    @property
     def overlaps(self):
         if all(self._relative_offsets == 0):
             # make sure we have the offsets done
@@ -108,15 +110,15 @@ class SessionPair:
 
         if self._overlaps is None:
             hm0 = self._session_0.to_sparse_hot_mat(
-                x_offset=-self._offsets_session_0[1],
-                y_offset=-self._offsets_session_0[0],
+                x_offset=self._offsets_session_0[1],
+                y_offset=self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_offset=-self._offsets_session_1[1],
-                y_offset=-self._offsets_session_1[0],
+                x_offset=self._offsets_session_1[1],
+                y_offset=self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -124,47 +126,49 @@ class SessionPair:
 
             self._overlaps = overlap_s(hm0, hm1)
 
-            return self._overlaps
+        return self._overlaps
 
+    @property
     def correlations(self):
         if all(self._relative_offsets == 0):
             # make sure we have the offsets done
             self._calc_offset()
 
-        if self._corr is None:
+        if self._correlation is None:
             lm0 = self._session_0.to_sparse_lam_mat(
-                x_offset=-self._offsets_session_0[1],
-                y_offset=-self._offsets_session_0[0],
+                x_offset=self._offsets_session_0[1],
+                y_offset=self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             lm1 = self._session_1.to_sparse_lam_mat(
-                x_offset=-self._offsets_session_1[1],
-                y_offset=-self._offsets_session_1[0],
+                x_offset=self._offsets_session_1[1],
+                y_offset=self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
-            self._corr = corr_stack_s(lm0, lm1)
+            self._correlation = corr_stack_s(lm0, lm1)
 
-            return self._corr
+        return self._correlation
 
+    @property
     def jacquard(self):
         if all(self._relative_offsets == 0):
             self._calc_offset()
 
         if self._jacquard is None:
             hm0 = self._session_0.to_sparse_hot_mat(
-                x_offset=-self._offsets_session_0[1],
-                y_offset=-self._offsets_session_0[0],
+                x_offset=self._offsets_session_0[1],
+                y_offset=self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_offset=-self._offsets_session_1[1],
-                y_offset=-self._offsets_session_1[0],
+                x_offset=self._offsets_session_1[1],
+                y_offset=self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -172,19 +176,19 @@ class SessionPair:
 
             self._jacquard = jacquard_s(hm0, hm1)
 
-            return self._jacquard
+        return self._jacquard
 
     @property
     def nearest_neighbor(self):
-        return nearest_neighbor_mask(self.distcenters())
+        return nearest_neighbor_mask(self.distcenters)
 
     @property
-    def neighbor_mask(self):
-        return neighbor_mask(self.distcenters(), radius=self._max_dist)
+    def neighbor(self):
+        return neighbor_mask(self.distcenters, radius=self._max_dist)
 
     @property
-    def non_nearest_neighbor_mask(self):
-        return non_nearest_neighbor_mask(self.distcenters(), radius=self._max_dist)
+    def non_nearest_neighbor(self):
+        return non_nearest_neighbor_mask(self.distcenters, radius=self._max_dist)
 
     def plot(self):
         plt.figure(figsize=(20, 10))
@@ -205,7 +209,7 @@ class SessionPair:
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             ),
-            cmap="Reds",
+            cmap="Blues",
             interpolation="nearest",
         )
         plt.imshow(
