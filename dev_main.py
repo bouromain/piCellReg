@@ -17,45 +17,26 @@ user_path = str(Path.home())
 p1 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201013/stat.npy")
 p2 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201014/stat.npy")
 s_p = SessionPair(Session(p1), Session(p2))
+a = s_p.distcenters
+# s_p.plot_center_distribution()
+s_p.plot_var_distrib(var_to_plot="correlations")
+
 
 all_corr = s_p.correlations[s_p.neighbor]
-all_corr = all_corr[all_corr > 0.001]
+# all_corr = all_corr[all_corr > 0.2]
 # try to plot the histogram of cells distances
-h = np.histogram(all_corr, bins=np.linspace(-1, 1, 100))
+h = np.histogram(all_corr, bins=np.linspace(0, 1, 100))
 
 plt.plot(
-    h[1][:-1], h[0],
+    h[1][:-1], np.log(h[0]),
 )
 plt.show()
 
-######
-lm0 = s_p._session_0.to_sparse_lam_mat(
-    x_offset=s_p._offsets_session_0[1],
-    y_offset=s_p._offsets_session_0[0],
-    rotation=s_p._rotation,
-    L_x=s_p._Lx_corrected,
-    L_y=s_p._Ly_corrected,
-)
-lm1 = s_p._session_1.to_sparse_lam_mat(
-    x_offset=s_p._offsets_session_1[1],
-    y_offset=s_p._offsets_session_1[0],
-    rotation=s_p._rotation,
-    L_x=s_p._Lx_corrected,
-    L_y=s_p._Ly_corrected,
-)
-
-lm0 = np.reshape(lm0.todense(), (1907, 512, 512))
-lm1 = np.reshape(lm1.todense(), (1855, 512, 512))
-
-plt.imshow(bn.nansum(lm0, axis=0), cmap="Blues")
-plt.imshow(bn.nansum(lm1, axis=0), alpha=0.5, cmap="Greens")
-plt.show()
 ######################################################
 ##  ALL SESSIONS
 
 p_all = op.join(user_path, "Sync/tmpData/crossReg/4466/")
 sess_list = SessionList().load_from_s2p(p_all)
-
 
 # make a list of all SessionPair with all the combinations of Session possible
 L = [

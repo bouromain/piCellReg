@@ -34,7 +34,10 @@ class SessionPair:
         self._correlation = None
         self._overlaps = None
         self._jacquard = None
-        self._max_dist = 14
+        self._max_dist = 10
+
+        # do it by default for now
+        self._calc_offset()
 
     def _calc_offset(self, do_rotation=False):
         if do_rotation:
@@ -180,22 +183,24 @@ class SessionPair:
 
     @property
     def iscell(self):
-        return self._session_0._iscell[:, None] * self._session_1[None, :] == 1
+        return (
+            self._session_0._iscell[:, None] * self._session_1._iscell[None, :]
+        ) == 1
 
     @property
     def nearest_neighbor(self):
         m = nearest_neighbor_mask(self.distcenters)
-        return m and self.iscell
+        return np.logical_and(m, self.iscell)
 
     @property
     def neighbor(self):
         m = neighbor_mask(self.distcenters, radius=self._max_dist)
-        return m and self.iscell
+        return np.logical_and(m, self.iscell)
 
     @property
     def non_nearest_neighbor(self):
         m = non_nearest_neighbor_mask(self.distcenters, radius=self._max_dist)
-        return m and self.iscell
+        return np.logical_and(m, self.iscell)
 
     def plot(self):
         plt.figure(figsize=(20, 10))
@@ -234,3 +239,82 @@ class SessionPair:
         plt.axis("off")
 
         plt.show()
+
+    def plot_center_distribution(self, n_bins=None):
+
+        if n_bins is None:
+            n_bins = (self._max_dist * 2) + 1
+
+        x_dists = self._session_0._x_center[:, None] - (
+            self._session_1._x_center[None, :] + self._relative_offsets[1]
+        )
+        y_dists = self._session_0._y_center[:, None] - (
+            self._session_1._y_center[None, :] + self._relative_offsets[0]
+        )
+
+        edges = np.linspace(-self._max_dist, self._max_dist, n_bins)
+        H, _, _ = np.histogram2d(x_dists.ravel(), y_dists.ravel(), bins=(edges, edges))
+
+        t = np.array([0, (n_bins - 1) / 2, n_bins - 1])
+        centers = [-self._max_dist, 0, self._max_dist]
+
+        plt.imshow(gaussian_filter(H, 2))
+
+        plt.xlabel(" x Displacement")
+        plt.ylabel(" y Displacement")
+
+        plt.xticks(t, centers)
+        plt.yticks(t, centers)
+        plt.show()
+
+    def plot_var_distrib(self, var_to_plot="correlations", n_bins=None):
+
+        if var_to_plot not in ["correlations", "overlaps", "jacquard"]:
+            raise ValueError(f"variable {var_to_plot} not fount")
+
+        if n_bins is None:
+            n_bins = (self._max_dist * 2) + 1
+
+        x_dists = self._session_0._x_center[:, None] - (
+            self._session_1._x_center[None, :] + self._relative_offsets[1]
+        )
+        y_dists = self._session_0._y_center[:, None] - (
+            self._session_1._y_center[None, :] + self._relative_offsets[0]
+        )
+
+        if var_to_plot == "correlations":
+            weigth = self.correlations.ravel()
+        elif var_to_plot == "overlaps":
+            weigth = self.overlaps.ravel()
+        elif var_to_plot == "jacquard":
+            weigth = self.jacquard.ravel()
+
+        edges = np.linspace(-self._max_dist, self._max_dist, n_bins)
+
+        H_count, _, _ = np.histogram2d(
+            x_dists.ravel(), y_dists.ravel(), bins=(edges, edges)
+        )
+
+        H, _, _ = np.histogram2d(
+            x_dists.ravel(), y_dists.ravel(), bins=(edges, edges), weights=weigth
+        )
+
+        H = H / H_count
+
+        t = np.array([0, (n_bins - 1) / 2, n_bins - 1])
+        centers = [-self._max_dist, 0, self._max_dist]
+
+        plt.imshow(H)
+
+        plt.xlabel(" x Displacement")
+        plt.ylabel(" y Displacement")
+
+        plt.xticks(t, centers)
+        plt.yticks(t, centers)
+
+        plt.title(f"Average {var_to_plot}")
+
+        plt.colorbar()
+
+        plt.show()
+

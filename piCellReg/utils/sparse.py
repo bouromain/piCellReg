@@ -68,7 +68,7 @@ def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     # compute the correlation matrix
     Corr = Cov / (a_s.dot(b_s.T))
 
-    return Corr
+    return np.array(Corr)
 
 
 def overlap_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
@@ -85,7 +85,7 @@ def overlap_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     if b.dtype == bool:
         b = b.astype(np.int32)
 
-    return a @ b.T
+    return (a @ b.T).toarray()
 
 
 def jacquard_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
@@ -120,4 +120,4 @@ def jacquard_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
     a_inter_b = overlap_s(a, b)
     divisor = a_sz + b_sz.T
 
-    return a_inter_b / (divisor - a_inter_b)
+    return np.array(a_inter_b / (divisor - a_inter_b))
