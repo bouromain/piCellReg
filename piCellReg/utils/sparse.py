@@ -74,9 +74,16 @@ def corr_stack_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
 def overlap_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
 
     if not sparse.issparse(a):
-        a = sparse.csr_matrix(a)
+        a = sparse.csr_matrix(a, dtype=np.int32)
     if not sparse.issparse(b):
-        b = sparse.csr_matrix(b)
+        b = sparse.csr_matrix(b, dtype=np.int32)
+
+    # we need to be sure we do not have boolean matrices here
+    # or we will have a bool output
+    if a.dtype == bool:
+        a = a.astype(np.int32)
+    if b.dtype == bool:
+        b = b.astype(np.int32)
 
     return a @ b.T
 
@@ -96,9 +103,16 @@ def jacquard_s(a: sparse.csr_matrix, b: sparse.csr_matrix):
         second sparse matrix 
     """
     if not sparse.issparse(a):
-        a = sparse.csr_matrix(a)
+        a = sparse.csr_matrix(a, dtype=np.int32)
     if not sparse.issparse(b):
-        b = sparse.csr_matrix(b)
+        b = sparse.csr_matrix(b, dtype=np.int32)
+
+    # we need to be sure we do not have boolean matrices here
+    # or we will have a bool output
+    if a.dtype == bool:
+        a = a.astype(np.int32)
+    if b.dtype == bool:
+        b = b.astype(np.int32)
 
     a_sz = a.sum(1)
     b_sz = b.sum(1)

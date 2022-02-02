@@ -1,7 +1,7 @@
 from pathlib import Path
 import os.path as op
 from itertools import combinations
-from piCellReg.datatype.Session import SessionList
+from piCellReg.datatype.Session import SessionList, Session
 from piCellReg.datatype.SessionPair import SessionPair
 from piCellReg.utils.fit import fit_center_distribution
 
@@ -14,12 +14,48 @@ import numpy as np
 # make a list of sessions
 user_path = str(Path.home())
 
-# p1 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201013/stat.npy")
-# p2 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201014/stat.npy")
-# s_p = SessionPair(Session(p1), Session(p2))
+p1 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201013/stat.npy")
+p2 = op.join(user_path, "Sync/tmpData/crossReg/4466/20201014/stat.npy")
+s_p = SessionPair(Session(p1), Session(p2))
+
+all_corr = s_p.correlations[s_p.neighbor]
+all_corr = all_corr[all_corr > 0.001]
+# try to plot the histogram of cells distances
+h = np.histogram(all_corr, bins=np.linspace(-1, 1, 100))
+
+plt.plot(
+    h[1][:-1], h[0],
+)
+plt.show()
+
+######
+lm0 = s_p._session_0.to_sparse_lam_mat(
+    x_offset=s_p._offsets_session_0[1],
+    y_offset=s_p._offsets_session_0[0],
+    rotation=s_p._rotation,
+    L_x=s_p._Lx_corrected,
+    L_y=s_p._Ly_corrected,
+)
+lm1 = s_p._session_1.to_sparse_lam_mat(
+    x_offset=s_p._offsets_session_1[1],
+    y_offset=s_p._offsets_session_1[0],
+    rotation=s_p._rotation,
+    L_x=s_p._Lx_corrected,
+    L_y=s_p._Ly_corrected,
+)
+
+lm0 = np.reshape(lm0.todense(), (1907, 512, 512))
+lm1 = np.reshape(lm1.todense(), (1855, 512, 512))
+
+plt.imshow(bn.nansum(lm0, axis=0), cmap="Blues")
+plt.imshow(bn.nansum(lm1, axis=0), alpha=0.5, cmap="Greens")
+plt.show()
+######################################################
+##  ALL SESSIONS
 
 p_all = op.join(user_path, "Sync/tmpData/crossReg/4466/")
 sess_list = SessionList().load_from_s2p(p_all)
+
 
 # make a list of all SessionPair with all the combinations of Session possible
 L = [
@@ -27,24 +63,29 @@ L = [
     for ((i0, s0), (i1, s1)) in combinations(enumerate(sess_list), 2)
 ]
 # remove shitty sessions
-LL = [L[l] for l in [0,1,3,4,6]]
+LL = [L[l] for l in [0, 1, 3, 4, 6]]
 
+# look at distances
 all_distances = [l.distcenters[l.neighbor].ravel() for l in LL]
 all_distances = np.concatenate(all_distances)
 
+(dist_all, dist_same, dist_different, _, _, _, _) = fit_center_distribution(
+    all_distances
+)
 
-dist_all, dist_same, dist_different, _, _, _ = fit_center_distribution(all_distances)
+plt.plot(dist_all)
+plt.show()
 
-fit_distances = 
+# look at correlations
+all_corr = [l.correlations[l.neighbor].ravel().T for l in LL]
+all_corr = np.concatenate(all_corr)
+
 
 # try to plot the histogram of cells distances
-h = np.histogram(all_distances, bins=np.linspace(0, 14, 100))
+h = np.histogram(all_corr, bins=np.linspace(0, 1, 100))
 
 plt.plot(
     h[1][:-1], h[0],
 )
 plt.show()
-
-
-
 

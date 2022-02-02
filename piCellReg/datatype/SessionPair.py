@@ -179,22 +179,29 @@ class SessionPair:
         return self._jacquard
 
     @property
+    def iscell(self):
+        return self._session_0._iscell[:, None] * self._session_1[None, :] == 1
+
+    @property
     def nearest_neighbor(self):
-        return nearest_neighbor_mask(self.distcenters)
+        m = nearest_neighbor_mask(self.distcenters)
+        return m and self.iscell
 
     @property
     def neighbor(self):
-        return neighbor_mask(self.distcenters, radius=self._max_dist)
+        m = neighbor_mask(self.distcenters, radius=self._max_dist)
+        return m and self.iscell
 
     @property
     def non_nearest_neighbor(self):
-        return non_nearest_neighbor_mask(self.distcenters, radius=self._max_dist)
+        m = non_nearest_neighbor_mask(self.distcenters, radius=self._max_dist)
+        return m and self.iscell
 
     def plot(self):
         plt.figure(figsize=(20, 10))
 
         plt.subplot(1, 2, 1)
-        plt.imshow(self._session_0._mean_image_e, cmap="Reds")
+        plt.imshow(self._session_0._mean_image_e, cmap="Blues")
         s1_s = shift_image(self._session_1._mean_image_e, -self._relative_offsets)
 
         plt.imshow(s1_s, alpha=0.5, cmap="Greens")

@@ -100,20 +100,22 @@ class Session(Base):
     def Ly(self):
         return self._Ly
 
-    @property
-    def x_pix(self, idx):
+    def x_pix(self, idx=None):
+        if idx is None:
+            return self.x_pix_all
         # weak check for the validity of the index
-        if idx >= 0 and idx < self.n_cells:
+        elif idx >= 0 and idx < self.n_cells:
             return self._x_pix[idx]
 
     @property
     def x_pix_all(self):
         return np.concatenate(self._x_pix)
 
-    @property
-    def y_pix(self, idx):
+    def y_pix(self, idx=None):
+        if idx is None:
+            return self.y_pix_all
         # weak check for the validity of the index
-        if idx >= 0 and idx < self.n_cells:
+        elif idx >= 0 and idx < self.n_cells:
             return self._y_pix[idx]
 
     @property
@@ -125,8 +127,9 @@ class Session(Base):
         idx_cell = [np.ones_like(tmp) * it for it, tmp in enumerate(self._x_pix)]
         return np.concatenate(idx_cell)
 
-    @property
     def lam(self, idx):
+        if idx is None:
+            return self.lam_all
         if idx >= 0 and idx < self.n_cells:
             return self._lam[idx]
 
