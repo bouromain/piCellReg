@@ -159,12 +159,9 @@ class Session(Base):
             # we want indexes so we floor the output of the previous function
             x_pix = np.floor(x_pix).astype(np.int32)
             y_pix = np.floor(y_pix).astype(np.int32)
-
-            # now if the shift we performed leads to out of range index
-            # (out of the initial image), we correct the range too
-
-            # First check of we have a problem
-            # a_problem = [(x_pix < 0).any() | y_pix < 0]
+        else:
+            x_pix = self.x_pix_all
+            y_pix = self.y_pix_all
 
         return idx_cell, y_pix, x_pix
 

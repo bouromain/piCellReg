@@ -20,11 +20,11 @@ class SessionPair:
         self._session_0 = s0
         self._session_1 = s1
 
-        self._relative_offsets = [0, 0]  # [y,x] relative offset s0 to s1
+        self._relative_offsets = np.array([0, 0])  # [y,x] relative offset s0 to s1
         # next offsets are necessary if the relative offset makes
         # negative index for one or the roi in either of the session
-        self._offsets_session_0 = [0, 0]  # [y,x] numpy format
-        self._offsets_session_1 = [0, 0]  # [y,x] numpy format
+        self._offsets_session_0 = np.array([0, 0])  # [y,x] numpy format
+        self._offsets_session_1 = np.array([0, 0])  # [y,x] numpy format
 
         self._Lx_corrected = bn.nanmax([self._session_0.Lx, self._session_1.Lx])
         self._Ly_corrected = bn.nanmax([self._session_0.Ly, self._session_1.Ly])
@@ -85,7 +85,7 @@ class SessionPair:
             self._Lx_corrected = max_x
 
     def distcenters(self):
-        if self._relative_offsets is None:
+        if all(self._relative_offsets == 0):
             # make sure we have the offsets done
             self._calc_offset()
 
@@ -102,21 +102,21 @@ class SessionPair:
         return self._dist_centers
 
     def overlaps(self):
-        if self._relative_offsets is None:
+        if all(self._relative_offsets == 0):
             # make sure we have the offsets done
             self._calc_offset()
 
         if self._overlaps is None:
             hm0 = self._session_0.to_sparse_hot_mat(
-                x_shift=-self._offsets_session_0[1],
-                y_shift=-self._offsets_session_0[0],
+                x_offset=-self._offsets_session_0[1],
+                y_offset=-self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_shift=-self._offsets_session_1[1],
-                y_shift=-self._offsets_session_1[0],
+                x_offset=-self._offsets_session_1[1],
+                y_offset=-self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -127,21 +127,21 @@ class SessionPair:
             return self._overlaps
 
     def correlations(self):
-        if self._relative_offsets is None:
+        if all(self._relative_offsets == 0):
             # make sure we have the offsets done
             self._calc_offset()
 
         if self._corr is None:
             lm0 = self._session_0.to_sparse_lam_mat(
-                x_shift=-self._offsets_session_0[1],
-                y_shift=-self._offsets_session_0[0],
+                x_offset=-self._offsets_session_0[1],
+                y_offset=-self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             lm1 = self._session_1.to_sparse_lam_mat(
-                x_shift=-self._offsets_session_1[1],
-                y_shift=-self._offsets_session_1[0],
+                x_offset=-self._offsets_session_1[1],
+                y_offset=-self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -151,20 +151,20 @@ class SessionPair:
             return self._corr
 
     def jacquard(self):
-        if self._relative_offsets is None:
+        if all(self._relative_offsets == 0):
             self._calc_offset()
 
         if self._jacquard is None:
             hm0 = self._session_0.to_sparse_hot_mat(
-                x_shift=-self._offsets_session_0[1],
-                y_shift=-self._offsets_session_0[0],
+                x_offset=-self._offsets_session_0[1],
+                y_offset=-self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             )
             hm1 = self._session_1.to_sparse_hot_mat(
-                x_shift=-self._offsets_session_1[1],
-                y_shift=-self._offsets_session_1[0],
+                x_offset=-self._offsets_session_1[1],
+                y_offset=-self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -199,8 +199,8 @@ class SessionPair:
         plt.subplot(1, 2, 2)
         plt.imshow(
             self._session_0.get_projection(
-                x_shift=-self._offsets_session_0[1],
-                y_shift=-self._offsets_session_0[0],
+                x_offset=self._offsets_session_0[1],
+                y_offset=self._offsets_session_0[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
@@ -210,8 +210,8 @@ class SessionPair:
         )
         plt.imshow(
             self._session_1.get_projection(
-                x_shift=-self._offsets_session_1[1],
-                y_shift=-self._offsets_session_1[0],
+                x_offset=self._offsets_session_1[1],
+                y_offset=self._offsets_session_1[0],
                 rotation=self._rotation,
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
