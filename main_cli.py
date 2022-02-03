@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 import argparse
 from piCellReg.io.load import find_file_rec
-from piCellReg.datatype.Session import Session
-from piCellReg.datatype.SessionList import SessionList
+from piCellReg.datatype.Session import Session, SessionList
 import matplotlib.pyplot as plt
 import numpy as np
 

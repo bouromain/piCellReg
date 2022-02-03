@@ -36,11 +36,10 @@ def register_image(
             ref_image, moving_image=moving_image_rot, upsample_factor=upsample_factor
         )
 
-        return offset[0], theta
+        return offset, theta
     else:
         offset = phase_cross_correlation(
             ref_image, moving_image=moving_image, upsample_factor=upsample_factor
         )
 
     return offset[0]
-

@@ -33,7 +33,7 @@ def fit_func(
 
 
 def fit_center_distribution(
-    dist: np.array, max_dist: int = 14, n_bins: int = 51, n_bins_out: int = 100
+    dist: np.array, max_dist: int = 10, n_bins: int = 51, n_bins_out: int = 100
 ):
     """
     fit_center_distribution [summary]
@@ -66,8 +66,14 @@ def fit_center_distribution(
     binned, _ = np.histogram(dist, edges, density=True)
     binned = binned + np.finfo(binned.dtype).eps
 
-    param_bounds = ([0, 0, 0, 0, 0, 0.0001, 0], [1, np.inf, np.inf, np.inf, 1, 2, 4])
-    sol, _ = curve_fit(fit_func, centers, binned, bounds=param_bounds)
+    #    A, x0, k, off, B, mu, sigma
+    p0 = [0.2, 7, 1, 1, 0.5, 1, 2]
+    param_bounds = (
+        [0.0001, 0, 0, 0, 0.0001, 0.01, 0.01],
+        [1, max_dist, np.inf, 1, 1, max_dist / 4, max_dist / 2],
+    )
+
+    sol, _ = curve_fit(fit_func, centers, binned, bounds=param_bounds, p0=p0)
 
     # implement weight of each distribution
     x_est = np.linspace(0.001, max_dist, n_bins_out)

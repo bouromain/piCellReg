@@ -35,10 +35,10 @@ class Session(Base):
     _y_center: np.ndarray = None
     _is_cell: np.ndarray = None
 
-    _mean_image: np.ndarray = None
+    # _mean_image: np.ndarray = None
     _mean_image_e: np.ndarray = None
-    _maxproj: np.ndarray = None
-    _Vcor: np.ndarray = None
+    # _maxproj: np.ndarray = None
+    # _Vcor: np.ndarray = None
     _Lx: int = None
     _Ly: int = None
 
@@ -63,10 +63,10 @@ class Session(Base):
 
             # extract data from ops
             ops = np.load(self._ops_path, allow_pickle=True).item()
-            self._mean_image = ops["meanImg"]
+            # self._mean_image = ops["meanImg"]
             self._mean_image_e = ops["meanImgE"]
-            self._maxproj = ops["max_proj"]
-            self._Vcor = ops["Vcorr"]
+            # self._maxproj = ops["max_proj"]
+            # self._Vcor = ops["Vcorr"]
             self._diameter = ops["diameter"]
             self._Lx = ops["Lx"]
             self._Ly = ops["Ly"]
@@ -156,7 +156,12 @@ class Session(Base):
         if (x_offset != 0) or (y_offset != 0) or (rotation != 0):
             origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = _shift_coord(
-                self.x_pix_all, self.y_pix_all, x_offset, y_offset, origin, rotation,
+                self.x_pix_all,
+                self.y_pix_all,
+                x_offset,
+                y_offset,
+                origin,
+                rotation,
             )
 
             # we want indexes so we floor the output of the previous function
@@ -381,26 +386,26 @@ def _bounding_box(
     x: np.ndarray, y: np.ndarray, margin_x: int = 5, margin_y: int = None
 ):
     """
-         _bounding_box return bounding box  of provided coordinates 
-        with a given margin
+     _bounding_box return bounding box  of provided coordinates
+    with a given margin
 
-        Parameters
-        ----------
-        x : np.ndarray
-            x coordinates
-        y : np.ndarray
-            x coordinates
-        margin_x : int, optional
-            margin we want in the x axis, by default 5
-        margin_y : int, optional
-            [description], by default the same than margin_x
+    Parameters
+    ----------
+    x : np.ndarray
+        x coordinates
+    y : np.ndarray
+        x coordinates
+    margin_x : int, optional
+        margin we want in the x axis, by default 5
+    margin_y : int, optional
+        [description], by default the same than margin_x
 
-        Returns
-        -------
-        tuple :
-            bounding box coordinates, (x_0,y_0, x_end,y_end)
-            [description]
-        """
+    Returns
+    -------
+    tuple :
+        bounding box coordinates, (x_0,y_0, x_end,y_end)
+        [description]
+    """
 
     if margin_y is None:
         margin_y = margin_x

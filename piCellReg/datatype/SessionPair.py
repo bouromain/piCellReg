@@ -203,6 +203,7 @@ class SessionPair:
         return np.logical_and(m, self.iscell)
 
     def plot(self):
+
         plt.figure(figsize=(20, 10))
 
         plt.subplot(1, 2, 1)
@@ -282,6 +283,8 @@ class SessionPair:
             self._session_1._y_center[None, :] + self._relative_offsets[0]
         )
 
+        mask = self.neighbor.ravel()
+
         if var_to_plot == "correlations":
             weigth = self.correlations.ravel()
         elif var_to_plot == "overlaps":
@@ -292,11 +295,14 @@ class SessionPair:
         edges = np.linspace(-self._max_dist, self._max_dist, n_bins)
 
         H_count, _, _ = np.histogram2d(
-            x_dists.ravel(), y_dists.ravel(), bins=(edges, edges)
+            x_dists.ravel()[mask], y_dists.ravel()[mask], bins=(edges, edges)
         )
 
         H, _, _ = np.histogram2d(
-            x_dists.ravel(), y_dists.ravel(), bins=(edges, edges), weights=weigth
+            x_dists.ravel()[mask],
+            y_dists.ravel()[mask],
+            bins=(edges, edges),
+            weights=weigth[mask],
         )
 
         H = H / H_count
@@ -318,3 +324,31 @@ class SessionPair:
 
         plt.show()
 
+    def plot_join_distrib(self):
+        n_bins = 30
+
+        d = self.distcenters[self.neighbor]
+        c = self.correlations[self.neighbor]
+
+        edges_dist = np.linspace(0, self._max_dist, n_bins)
+        edges_corr = np.linspace(0, 1, n_bins)
+
+        H, _, _ = np.histogram2d(
+            d.ravel(),
+            c.ravel(),
+            bins=(edges_dist, edges_corr),
+        )
+
+        t = np.linspace(0, n_bins - 1, 5)
+        center_dist = np.linspace(0, self._max_dist, len(t))
+        center_corr = np.linspace(0, 1, len(t))
+
+        plt.imshow(H)
+
+        plt.xlabel(" centroid distance")
+        plt.ylabel(" correlation ")
+
+        plt.xticks(t, center_dist)
+        plt.yticks(t, center_corr)
+
+        plt.show()
