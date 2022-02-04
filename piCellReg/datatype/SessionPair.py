@@ -10,11 +10,18 @@ from piCellReg.utils.helpers import (
 )
 from piCellReg.utils.sparse import corr_stack_s, jacquard_s, overlap_s
 import bottleneck as bn
+import os.path as op
 
 
 class SessionPair:
     def __init__(
-        self, s0: Session = None, s1: Session = None, id_s0: int = 0, id_s1: int = 1
+        self,
+        s0: Session = None,
+        s1: Session = None,
+        id_s0: int = 0,
+        id_s1: int = 1,
+        *,
+        max_dist=10,
     ) -> None:
         self._pair_ids = [id_s0, id_s1]
         self._session_0 = s0
@@ -34,10 +41,13 @@ class SessionPair:
         self._correlation = None
         self._overlaps = None
         self._jacquard = None
-        self._max_dist = 10
+        self._max_dist = max_dist
 
         # do it by default for now
         self._calc_offset()
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__} object with sessions {self._pair_ids[0]} and {self._pair_ids[1]}"
 
     def _calc_offset(self, do_rotation=False):
         if do_rotation:
@@ -268,7 +278,7 @@ class SessionPair:
         plt.yticks(t, centers)
         plt.show()
 
-    def plot_var_distrib(self, var_to_plot="correlations", n_bins=None):
+    def plot_var_distrib(self, var_to_plot="correlations", n_bins=None, save_path=None):
 
         if var_to_plot not in ["correlations", "overlaps", "jacquard"]:
             raise ValueError(f"variable {var_to_plot} not fount")
@@ -321,11 +331,14 @@ class SessionPair:
         plt.title(f"Average {var_to_plot}")
 
         plt.colorbar()
-
         plt.show()
 
-    def plot_join_distrib(self):
-        n_bins = 30
+        if save_path is not None:
+            namefile = f"Session-{self._pair_ids[0]}-vs-Session{self._pair_ids[1]}-average{var_to_plot}"
+            plt.savefig(op.join(save_path, namefile), format="png")
+            plt.close()
+
+    def plot_join_distrib(self, n_bins=30):
 
         d = self.distcenters[self.neighbor]
         c = self.correlations[self.neighbor]

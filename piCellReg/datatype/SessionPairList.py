@@ -4,6 +4,7 @@ from piCellReg.datatype.SessionPair import SessionPair
 import numpy as np
 from itertools import combinations
 from piCellReg.utils.fit import fit_center_distribution, calc_psame, psame_matrix
+import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -14,17 +15,20 @@ class SessionPairList:
 
     # general infos
     _sessions_pairs = []
+    _max_dist = 10
 
     # load all available sessions in a root path
-    def from_list(self, session_pairs_list: list):
+    def from_list(self, session_pairs_list: list, max_dist=10):
         self._sessions_pairs = session_pairs_list
+        self._max_dist = max_dist
+        return self
 
-    def from_SessionList(self, sess_list):
-
+    def from_SessionList(self, sess_list, max_dist=10):
         self._sessions_pairs = [
-            SessionPair(s0, s1, id_s0=i0, id_s1=i1)
+            SessionPair(s0, s1, id_s0=i0, id_s1=i1, max_dist=max_dist)
             for ((i0, s0), (i1, s1)) in combinations(enumerate(sess_list), 2)
         ]
+        return self
 
     @property
     def n_session(self):
@@ -34,7 +38,7 @@ class SessionPairList:
         return self.n_session
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__} object with {self.n_session} sessions"
+        return f"{type(self).__name__} object with {self.n_session} pairs of sessions"
 
     @property
     def isempty(self):
@@ -47,8 +51,14 @@ class SessionPairList:
         if self.isempty:
             return self
 
-        if isinstance(idx, (int, slice, np.int32, np.int64, np.ndarray)):
+        if isinstance(idx, (int, slice, np.int32, np.int64)):
             return self._sessions_pairs[idx]
+
+        if isinstance(idx, (list)):
+            print(type(self))
+            return type(self)().from_list(
+                [self._sessions_pairs[i] for i in idx], max_dist=self.max_dist,
+            )
         else:
             raise TypeError(f"Unsupported indexing type {type(idx)}")
 
@@ -63,6 +73,17 @@ class SessionPairList:
 
         self._index += 1
         return self._sessions_pairs[index]
+
+    @property
+    def max_dist(self):
+        return self._max_dist
+
+    @max_dist.setter
+    def max_dist(self, val):
+        self._max_dist = val
+        # and update the max dist inside the list
+        for l in self._sessions_pairs:
+            l._max_dist = val
 
     @property
     def distances(self):
@@ -115,7 +136,7 @@ class SessionPairList:
             (dist_all, dist_same, _, x_est, _, _, _,) = fit_center_distribution(
                 self.distances_neighbor
             )
-            p_same = calc_psame(dist_same, dist_all)
+            return calc_psame(dist_same, dist_all), x_est
 
         elif method == "correlation":
             raise NotImplementedError
@@ -124,7 +145,7 @@ class SessionPairList:
                 dist_all_dist,
                 dist_same_dist,
                 _,
-                _,
+                x_est,
                 _,
                 error_distance_model,
                 _,
@@ -134,14 +155,37 @@ class SessionPairList:
                 dist_all_corr,
                 dist_same_corr,
                 _,
-                _,
+                x_est,
                 _,
                 error_correlation_model,
                 _,
             ) = self.fit_correlation_model
 
             if error_correlation_model < error_distance_model:
-                return calc_psame(dist_all_corr, dist_same_corr)
+                return calc_psame(dist_all_corr, dist_same_corr), x_est
             else:
-                return calc_psame(dist_all_dist, dist_same_dist)
+                return calc_psame(dist_all_dist, dist_same_dist), x_est
 
+    def plot_join_distrib(self, n_bins=30):
+
+        d = self.distances_neighbor
+        c = self.correlations_neighbor
+
+        edges_dist = np.linspace(0, self.max_dist, n_bins)
+        edges_corr = np.linspace(0, 1, n_bins)
+
+        H, _, _ = np.histogram2d(d.ravel(), c.ravel(), bins=(edges_dist, edges_corr),)
+
+        t = np.linspace(0, n_bins - 1, 5)
+        center_dist = np.linspace(0, self.max_dist, len(t))
+        center_corr = np.linspace(0, 1, len(t))
+
+        plt.imshow(H)
+
+        plt.xlabel(" centroid distance")
+        plt.ylabel(" correlation ")
+
+        plt.xticks(t, center_dist)
+        plt.yticks(t, center_corr)
+
+        plt.show()

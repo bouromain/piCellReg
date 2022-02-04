@@ -1,8 +1,9 @@
 from pathlib import Path
 import os.path as op
 from itertools import combinations
-from piCellReg.datatype.Session import SessionList, Session
+from piCellReg.datatype.Session import SessionList
 from piCellReg.datatype.SessionPair import SessionPair
+from piCellReg.datatype.SessionPairList import SessionPairList
 from piCellReg.utils.fit import fit_center_distribution, calc_psame, psame_matrix
 
 import matplotlib.pyplot as plt
@@ -41,20 +42,22 @@ p_all = op.join(user_path, "Sync/tmpData/crossReg/4466/")
 sess_list = SessionList().load_from_s2p(p_all)
 
 # make a list of all SessionPair with all the combinations of Session possible
-L = [
-    SessionPair(s0, s1, id_s0=i0, id_s1=i1)
-    for ((i0, s0), (i1, s1)) in combinations(enumerate(sess_list), 2)
-]
-# remove bad sessions
-LL = L  # [L[l] for l in [4, 5, 6, 7, 9]]
-LL = [L[l] for l in [0, 1, 3, 4, 6]]
+# L = [
+#     SessionPair(s0, s1, id_s0=i0, id_s1=i1)
+#     for ((i0, s0), (i1, s1)) in combinations(enumerate(sess_list), 2)
+# ]
 
+L = SessionPairList().from_SessionList(sess_list)
+
+# remove bad sessions
+LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
+# LL = [L[l] for l in [0, 1, 3, 4, 6]]
 
 [l.plot() for l in LL]
 
 
 # look at distances
-all_distances = [l.distcenters[l.neighbor].ravel() for l in LL]
+all_distances = LL.distances_neighbor  # [l.distcenters[l.neighbor].ravel() for l in LL]
 all_distances = np.concatenate(all_distances)
 
 
@@ -74,8 +77,6 @@ plt.show()
 
 ## calculate psame and the psame matrix
 p_same = calc_psame(dist_same, dist_all)
-p_same_centers = np.linspace(0, 15, 100)  # it should be outputed from the fit function
-
 putative_same = psame_matrix(dist_all, p_same, x_est)
 
 
@@ -91,4 +92,4 @@ putative_same = psame_matrix(dist_all, p_same, x_est)
 #     h[1][:-1],
 #     h[0],
 # )
-# plt.show()
+# plt.show
