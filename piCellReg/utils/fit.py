@@ -109,11 +109,11 @@ def calc_psame(dist_same, dist_all):
     return p_same
 
 
-def psame_matrix(dist_mat, p_same_dist, p_same_centers):
+def psame_matrix(dist, p_same_dist, p_same_centers):
 
-    sz = dist_mat.shape
-    # linearise matrix for simplicity
-    d = dist_mat.ravel()
+    # linearise matrix in case we give a 2D matrix
+    sz = dist.shape
+    d = dist.ravel()
     # keep values inside of the p_same centers range
     mask = np.logical_and(d >= p_same_centers[0], d <= p_same_centers[-1])
     # find closest p_same center fo each dist_mat values

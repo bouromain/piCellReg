@@ -45,11 +45,12 @@ L = [
     SessionPair(s0, s1, id_s0=i0, id_s1=i1)
     for ((i0, s0), (i1, s1)) in combinations(enumerate(sess_list), 2)
 ]
-# remove shitty sessions
-LL = [L[l] for l in [4, 5, 6, 7, 9]]
+# remove bad sessions
+LL = L  # [L[l] for l in [4, 5, 6, 7, 9]]
+LL = [L[l] for l in [0, 1, 3, 4, 6]]
 
 
-# [l.plot() for l in LL]
+[l.plot() for l in LL]
 
 
 # look at distances

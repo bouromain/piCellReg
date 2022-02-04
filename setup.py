@@ -15,5 +15,6 @@ setup(
         "tqdm",
         "matplotlib",
         "PyQt5",
+        "networkx",
     ],
 )
