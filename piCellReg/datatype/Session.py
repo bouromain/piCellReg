@@ -1,5 +1,6 @@
 import os.path as op
 from dataclasses import dataclass
+from xml.dom import NotFoundErr
 
 import bottleneck as bn
 import numpy as np
@@ -156,12 +157,7 @@ class Session(Base):
         if (x_offset != 0) or (y_offset != 0) or (rotation != 0):
             origin = (L_x / 2, L_y / 2)
             x_pix, y_pix = _shift_coord(
-                self.x_pix_all,
-                self.y_pix_all,
-                x_offset,
-                y_offset,
-                origin,
-                rotation,
+                self.x_pix_all, self.y_pix_all, x_offset, y_offset, origin, rotation,
             )
 
             # we want indexes so we floor the output of the previous function
@@ -332,13 +328,14 @@ class SessionList:
     """
 
     # general infos
-    _root_path: str = None
     _sessions = []
 
     # load all available sessions in a root path
     def load_from_s2p(self, fpath: str = None):
-        self._root_path = fpath
-        list_stat = find_file_rec(self._root_path, "stat.npy")
+
+        if not op.isdir(fpath):
+            raise NotFoundErr(f"Directory {fpath} not found")
+        list_stat = find_file_rec(fpath, "stat.npy")
         self._sessions = [Session(p) for p in list_stat]
 
         return self

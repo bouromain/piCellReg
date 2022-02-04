@@ -333,11 +333,7 @@ class SessionPair:
         edges_dist = np.linspace(0, self._max_dist, n_bins)
         edges_corr = np.linspace(0, 1, n_bins)
 
-        H, _, _ = np.histogram2d(
-            d.ravel(),
-            c.ravel(),
-            bins=(edges_dist, edges_corr),
-        )
+        H, _, _ = np.histogram2d(d.ravel(), c.ravel(), bins=(edges_dist, edges_corr),)
 
         t = np.linspace(0, n_bins - 1, 5)
         center_dist = np.linspace(0, self._max_dist, len(t))
