@@ -43,6 +43,9 @@ class Session(Base):
     _Lx: int = None
     _Ly: int = None
 
+    # calculated info
+    _cluster_id = None
+
     def __post_init__(self):
         super().__post_init__()
         # if the object is initialized with a correct stat path
@@ -77,6 +80,9 @@ class Session(Base):
                 self._iscell = np.load(self._iscell_path, allow_pickle=True)[:, 0]
             else:
                 self._iscell = np.ones((self.n_cells))
+
+            if self._cluster_id is None:
+                self._cluster_id = np.empty_like(self._x_center)
 
     def __repr__(self) -> str:
         return f"{type(self).__name__} object with {self.n_cells} ROI"

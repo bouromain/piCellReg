@@ -4,6 +4,23 @@ from itertools import product
 
 
 def cluster_cell(edgesList: np.ndarray, weigths: np.ndarray, session_list: list):
+    """
+    cluster_cell [summary]
+
+    Parameters
+    ----------
+    edgesList : np.ndarray
+        list of edges  [[Vertex 1, Vertex 2], ... , [Vertex m, Vertex n]] of size [2, n_edges]
+    weights : np.ndarray
+        weights corresponding to the edges list
+    session_list : dict
+        sessions id corresponding to the each vertex {vertex1:1, vertex2:2, vertex3:3, vertex4:3}
+
+    Raises
+    ------
+    ValueError
+        [description]
+    """
     ...
     if edgesList.shape[0] != weigths.shape[0]:
         raise ValueError(
@@ -18,10 +35,11 @@ def cluster_cell(edgesList: np.ndarray, weigths: np.ndarray, session_list: list)
     # format the egdes and weigth correctly to create the graph
     weigthed_edges_list = [(v[0], v[1], w) for v, w in zip(edgesList, weigths)]
     big_G = nx.Graph()
+    big_G.add_weighted_edges_from(weigthed_edges_list)
     # set a "session" attribute
     nx.set_node_attributes(big_G, session_list, "session")
 
-    # initial cleaning of te cluster by removing dead end clusters
+    # initial cleaning of the clusters by removing dead end clusters
     # if they are duplicates
     big_G = clean_clusters(big_G)
 
@@ -45,10 +63,10 @@ def clean_clusters(G: nx.Graph()):
             for id_sess in set(tmp_sess_list):
                 cand_m = tmp_sess_list == id_sess
                 if sum(cand_m) > 1:
-                    # if the session as duplicate examinate how they are:
+                    # if the session as duplicate examine how they are:
                     # we can have 2 cases:
-                    #       only one egdes nodes -> keep the one with strongest weigth
-                    #       one multiple and other one eges -> remove all the one edge
+                    #       only one edges nodes -> keep the one with strongest weight
+                    #       one multiple and other one edges -> remove all the one edge
                     id_clust = tmp_node_id[cand_m]
                     n_edges_clust = np.array(
                         [len(tmp_clust.edges(e)) for e in id_clust]
@@ -60,8 +78,8 @@ def clean_clusters(G: nx.Graph()):
                             for _, _, w in tmp_clust.edges(id_clust, data=True)
                         ]
                         to_remove = id_clust[np.argmin(w_edges_clust)]
-                        # remove dead end node with smaller weigth
-                        # (here we could better handle equal weigth)
+                        # remove dead end node with smaller weight
+                        # (here we could better handle equal weight)
                         G.remove_node(to_remove)
 
                     elif (n_edges_clust == 1).any():

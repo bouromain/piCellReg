@@ -50,8 +50,8 @@ sess_list = SessionList().load_from_s2p(p_all)
 L = SessionPairList().from_SessionList(sess_list)
 
 # remove bad sessions
-LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
-# LL = [L[l] for l in [0, 1, 3, 4, 6]]
+# LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
+LL = L[[0, 1, 3, 4, 6]]
 
 [l.plot() for l in LL]
 
@@ -72,8 +72,11 @@ plt.show()
 
 
 ## calculate psame and the psame matrix
-p_same = LL.get_psame_dist()
-putative_same = psame_matrix(dist_all, p_same, x_est)
+p_same, x_est = LL.get_psame_dist()
+
+## output the distance of all the pairs of cells
+all_dist = LL.distances
+all_psame = psame_matrix(all_dist, p_same, x_est)
 
 # # look at correlations
 # all_corr = [l.correlations[l.neighbor].ravel().T for l in LL]
@@ -95,6 +98,6 @@ import bottleneck as bn
 def unique_cell_id(cell_id, session_id, n_sessions=None):
 
     if cell_id.shape == session_id.shape:
-        raise
+        raise ValueError("Input array should have the same size")
     if n_sessions is None:
         n_sessions = bn.nanmax(session_id)
