@@ -5,6 +5,7 @@ import numpy as np
 from itertools import combinations
 from piCellReg.utils.fit import fit_center_distribution, calc_psame, psame_matrix
 import matplotlib.pyplot as plt
+import bottleneck as bn
 
 
 @dataclass
@@ -16,6 +17,7 @@ class SessionPairList:
     # general infos
     _sessions_pairs = []
     _max_dist = 10
+    _max_n_cell = None
 
     # load all available sessions in a root path
     def from_list(self, session_pairs_list: list, max_dist=10):
@@ -31,11 +33,36 @@ class SessionPairList:
         return self
 
     @property
+    def max_n_cell(self):
+        if self._max_n_cell is None:
+            m = [
+                bn.nanmax([s._session_0.n_cells, s._session_1.n_cells])
+                for s in self._sessions_pairs
+            ]
+            self._max_n_cell = bn.nanmax(m)
+        else:
+            return self._max_n_cell
+
+    @property
     def n_session(self):
+        """
+        n_session returns the number of unique sessions
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        all_ids = [i._pair_ids for i in self]
+        all_ids = np.concatenate(all_ids)
+        return len(np.unique(all_ids))
+
+    @property
+    def n_pairs(self):
         return len(self._sessions_pairs)
 
     def __len__(self):
-        return self.n_session
+        return self.n_pairs
 
     def __repr__(self) -> str:
         return f"{type(self).__name__} object with {self.n_session} pairs of sessions"

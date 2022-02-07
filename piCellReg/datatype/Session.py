@@ -336,7 +336,7 @@ class SessionList:
         if not op.isdir(fpath):
             raise NotFoundErr(f"Directory {fpath} not found")
         list_stat = find_file_rec(fpath, "stat.npy")
-        self._sessions = [Session(p) for p in list_stat]
+        self._sessions = [Session(p, _idx=i) for i, p in enumerate(list_stat)]
 
         return self
 

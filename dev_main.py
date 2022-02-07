@@ -57,13 +57,9 @@ LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
 
 
 # look at distances
-all_distances = LL.distances_neighbor  # [l.distcenters[l.neighbor].ravel() for l in LL]
-all_distances = np.concatenate(all_distances)
+all_distances = LL.distances_neighbor
+(dist_all, dist_same, dist_different, x_est, _, _, s) = LL.fit_distance_model()
 
-
-(dist_all, dist_same, dist_different, x_est, _, _, s) = fit_center_distribution(
-    all_distances
-)
 
 # try to plot the histogram of cells distances
 h = np.histogram(all_distances, bins=np.linspace(0, 10, 100), density=True)
@@ -76,9 +72,8 @@ plt.show()
 
 
 ## calculate psame and the psame matrix
-p_same = calc_psame(dist_same, dist_all)
+p_same = LL.get_psame_dist()
 putative_same = psame_matrix(dist_all, p_same, x_est)
-
 
 # # look at correlations
 # all_corr = [l.correlations[l.neighbor].ravel().T for l in LL]
@@ -93,3 +88,13 @@ putative_same = psame_matrix(dist_all, p_same, x_est)
 #     h[0],
 # )
 # plt.show
+
+import bottleneck as bn
+
+
+def unique_cell_id(cell_id, session_id, n_sessions=None):
+
+    if cell_id.shape == session_id.shape:
+        raise
+    if n_sessions is None:
+        n_sessions = bn.nanmax(session_id)

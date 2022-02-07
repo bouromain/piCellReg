@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from torch import dtype
 from piCellReg.datatype.Session import Session
 from piCellReg.registration.register import register_image
 from piCellReg.registration.utils import shift_image
@@ -45,6 +46,34 @@ class SessionPair:
 
         # do it by default for now
         self._calc_offset()
+
+    @property
+    def cell_ids(self):
+        sz = np.array([self._session_0.n_cells, self._session_1.n_cells])
+        s_0_sess_id = np.ones(sz, dtype=np.int32) * self._session_0._idx
+        s_0_cells_id = (
+            np.arange(sz[0], dtype=np.int32)[:, None]
+            * np.ones(sz[1], dtype=np.int32)[None, :]
+        )
+
+        s_1_sess_id = np.ones(sz, dtype=np.int32) * self._session_1._idx
+        s_1_cells_id = (
+            np.ones(sz[0], dtype=np.int32)[:, None]
+            * np.arange(sz[1], dtype=np.int32)[None, :]
+        )
+
+        return s_0_sess_id, s_0_cells_id, s_1_sess_id, s_1_cells_id
+
+    @property
+    def cell_ids_lin(self):
+        s_0_sess_id, s_0_cells_id, s_1_sess_id, s_1_cells_id = self.cell_ids
+
+        return (
+            s_0_sess_id.ravel(),
+            s_0_cells_id.ravel(),
+            s_1_sess_id.ravel(),
+            s_1_cells_id.ravel(),
+        )
 
     def __repr__(self) -> str:
         return f"{type(self).__name__} object with sessions {self._pair_ids[0]} and {self._pair_ids[1]}"
