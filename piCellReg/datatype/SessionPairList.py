@@ -34,6 +34,10 @@ class SessionPairList:
 
     @property
     def max_n_cell(self):
+        """
+        max_n_cell return the maximum number of cells of the biggest session
+        in the session pair list 
+        """
         if self._max_n_cell is None:
             m = [
                 bn.nanmax([s._session_0.n_cells, s._session_1.n_cells])
@@ -47,15 +51,18 @@ class SessionPairList:
     def n_session(self):
         """
         n_session returns the number of unique sessions
-
-        Returns
-        -------
-        [type]
-            [description]
         """
         all_ids = [i._pair_ids for i in self]
         all_ids = np.concatenate(all_ids)
-        return len(np.unique(all_ids))
+        return len(self.session_ids)
+
+    @property
+    def session_ids(self):
+        """
+        n_session returns ids of unique sessions
+        """
+        all_ids = [i._pair_ids for i in self]
+        return np.unique(np.concatenate(all_ids))
 
     @property
     def n_pairs(self):
@@ -95,7 +102,7 @@ class SessionPairList:
 
     def __next__(self):
         index = self._index
-        if index > self.n_session - 1:
+        if index > len(self) - 1:
             raise StopIteration
 
         self._index += 1
@@ -111,6 +118,40 @@ class SessionPairList:
         # and update the max dist inside the list
         for l in self._sessions_pairs:
             l._max_dist = val
+
+    @property
+    def all_cell_ids(self):
+        s_0_sess_id = []
+        s_0_cells_id = []
+        s_1_sess_id = []
+        s_1_cells_id = []
+
+        for p in self:
+            a, b, c, d = p.cell_ids_lin
+            s_0_sess_id.append(a)
+            s_0_cells_id.append(b)
+            s_1_sess_id.append(c)
+            s_1_cells_id.append(d)
+
+        return (
+            np.concatenate(s_0_sess_id),
+            np.concatenate(s_0_cells_id),
+            np.concatenate(s_1_sess_id),
+            np.concatenate(s_1_cells_id),
+        )
+
+    @property
+    def all_cell_lin_ids(self):
+        """
+        all_cell_lin_ids 
+        this code convert cell indexes from (cell_id, session_id) -> unique cell id
+        """
+        s_0_sess_id, s_0_cells_id, s_1_sess_id, s_1_cells_id = self.all_cell_ids
+        sz = [self.n_session, self.max_n_cell]
+        s_0_cells_id_lin = np.ravel_multi_index([s_0_sess_id, s_0_cells_id], sz)
+        s_1_cells_id_lin = np.ravel_multi_index([s_1_sess_id, s_1_cells_id], sz)
+
+        return s_0_cells_id_lin, s_1_cells_id_lin
 
     @property
     def distances(self):
