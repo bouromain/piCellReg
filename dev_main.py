@@ -91,13 +91,3 @@ all_psame = psame_matrix(all_dist, p_same, x_est)
 #     h[0],
 # )
 # plt.show
-
-import bottleneck as bn
-
-
-def unique_cell_id(cell_id, session_id, n_sessions=None):
-
-    if cell_id.shape == session_id.shape:
-        raise ValueError("Input array should have the same size")
-    if n_sessions is None:
-        n_sessions = bn.nanmax(session_id)
