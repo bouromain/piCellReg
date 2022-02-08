@@ -134,7 +134,8 @@ for it_clust in list_clusters:
     if len(set(tmp_sess_list)) < len(tmp_sess_list):
         c += 1
 
-
+# see
+# https://www.francescobonchi.com/CCtuto_kdd14.pdf
 # interesting 2 7 8
 
 aa = G.subgraph(list_clusters[8])
