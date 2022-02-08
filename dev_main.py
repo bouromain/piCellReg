@@ -1,10 +1,12 @@
 from pathlib import Path
+
 import os.path as op
 from itertools import combinations
 from piCellReg.datatype.Session import SessionList
 from piCellReg.datatype.SessionPair import SessionPair
 from piCellReg.datatype.SessionPairList import SessionPairList
 from piCellReg.utils.fit import fit_center_distribution, calc_psame, psame_matrix
+from piCellReg.utils.clustering import cluster_cell
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,41 +55,98 @@ L = SessionPairList().from_SessionList(sess_list)
 # LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
 LL = L[[0, 1, 3, 4, 6]]
 
-[l.plot() for l in LL]
+# [l.plot() for l in LL]
 
 
 # look at distances
-all_distances = LL.distances_neighbor
+all_distances = LL.distances[LL.neighbors]
 (dist_all, dist_same, dist_different, x_est, _, _, s) = LL.fit_distance_model()
 
 
 # try to plot the histogram of cells distances
-h = np.histogram(all_distances, bins=np.linspace(0, 10, 100), density=True)
+# h = np.histogram(all_distances, bins=np.linspace(0, 10, 100), density=True)
 
-plt.plot(h[1][:-1], h[0])
-plt.plot(x_est, dist_all)
-plt.plot(x_est, dist_same)
-plt.plot(x_est, dist_different)
-plt.show()
+# plt.plot(h[1][:-1], h[0])
+# plt.plot(x_est, dist_all)
+# plt.plot(x_est, dist_same)
+# plt.plot(x_est, dist_different)
+# plt.show()
 
 
 ## calculate psame and the psame matrix
 p_same, x_est = LL.get_psame_dist()
 
+
 ## output the distance of all the pairs of cells
 all_dist = LL.distances
 all_psame = psame_matrix(all_dist, p_same, x_est)
-
-# # look at correlations
-# all_corr = [l.correlations[l.neighbor].ravel().T for l in LL]
-# all_corr = np.concatenate(all_corr)
+all_psame = all_psame
+putative_same_mask = np.logical_and(all_psame > 0.05, LL.neighbors)
 
 
-# # try to plot the histogram of cells distances
-# h = np.histogram(all_corr, bins=np.linspace(0, 1, 100))
+##### FOR DEV
+edges_list = LL.all_cell_lin_ids
+edges_list = np.vstack(edges_list)
+edges_list = edges_list[:, putative_same_mask]
 
-# plt.plot(
-#     h[1][:-1],
-#     h[0],
-# )
-# plt.show
+edge_corr = LL.correlations
+edge_corr = edge_corr[putative_same_mask]
+
+sess_vertex = LL.all_cell_lin_sess_id
+sess_vertex = {s[0]: s[1] for s in sess_vertex.T}
+
+# c = cluster_cell(edges_list, edge_corr, sess_vertex)
+
+import numpy as np
+import networkx as nx
+from itertools import product
+
+edgesList = edges_list.T
+weigths = edge_corr
+session_list = sess_vertex
+
+if edgesList.shape[0] != weigths.shape[0]:
+    raise ValueError(
+        "Variable size mismatch,edge list and weights should share their first dimension"
+    )
+weigthed_edges_list = [(v[0], v[1], w) for v, w in zip(edgesList, weigths)]
+big_G = nx.Graph()
+big_G.add_weighted_edges_from(weigthed_edges_list)
+# set a "session" attribute
+nx.set_node_attributes(big_G, session_list, "session")
+
+# find node that are duplicate (one cluster has several putative candidate in a session)
+duplicates_idx = find_duplicated_nodes(big_G)
+
+
+##
+c = 0
+G = big_G
+
+list_clusters = [c for c in nx.connected_components(G)]
+for it_clust in list_clusters:
+    # take subgraph with only nodes from one cluster
+    tmp_clust = G.subgraph(it_clust)
+
+    # now find if we have duplicate node in a layer
+    tmp_sess_list = np.array([v["session"] for _, v in tmp_clust.nodes(data=True)])
+    tmp_node_id = it_clust
+    if len(set(tmp_sess_list)) < len(tmp_sess_list):
+        c += 1
+
+
+# interesting 2 7 8
+
+aa = G.subgraph(list_clusters[8])
+sessions = {lab: v["session"] for lab, v in aa.nodes(data=True)}
+nx.draw(aa, labels=sessions, with_labels=True)
+plt.show()
+
+#### END FOR DEV
+
+LL[0].plot_same_cell(0, 32)
+plt.subplot(121)
+plt.imshow(LL[0]._session_0.get_roi(0, margin=20))
+plt.subplot(122)
+plt.imshow(LL[0]._session_1.get_roi(32, margin=20))
+plt.show()

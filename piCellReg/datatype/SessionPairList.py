@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import itertools
+
 from piCellReg.datatype.SessionPair import SessionPair
 import numpy as np
 from itertools import combinations
@@ -44,8 +45,8 @@ class SessionPairList:
                 for s in self._sessions_pairs
             ]
             self._max_n_cell = bn.nanmax(m)
-        else:
-            return self._max_n_cell
+
+        return self._max_n_cell
 
     @property
     def n_session(self):
@@ -54,7 +55,17 @@ class SessionPairList:
         """
         all_ids = [i._pair_ids for i in self]
         all_ids = np.concatenate(all_ids)
+        all_ids = np.unique(all_ids)
         return len(self.session_ids)
+
+    @property
+    def max_id_session(self):
+        """
+        n_session returns the max session id
+        """
+        all_ids = [i._pair_ids for i in self]
+        all_ids = np.concatenate(all_ids)
+        return bn.nanmax(self.session_ids)
 
     @property
     def session_ids(self):
@@ -147,11 +158,46 @@ class SessionPairList:
         this code convert cell indexes from (cell_id, session_id) -> unique cell id
         """
         s_0_sess_id, s_0_cells_id, s_1_sess_id, s_1_cells_id = self.all_cell_ids
-        sz = [self.n_session, self.max_n_cell]
+        sz = [self.max_id_session + 1, self.max_n_cell + 1]
+
         s_0_cells_id_lin = np.ravel_multi_index([s_0_sess_id, s_0_cells_id], sz)
         s_1_cells_id_lin = np.ravel_multi_index([s_1_sess_id, s_1_cells_id], sz)
 
         return s_0_cells_id_lin, s_1_cells_id_lin
+
+    def unravel_cell_id(self, idx):
+        """
+        Convert cell linear index to their initial session, cell_id index
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        sz = [self.max_id_session + 1, self.max_n_cell + 1]
+        return np.unravel_index(idx, sz)
+
+    @property
+    def all_cell_lin_sess_id(self):
+        # TODO this could eb made much more efficient
+        s_0_sess_id, _, s_1_sess_id, _ = self.all_cell_ids
+        s_0_cells_id_lin, s_1_cells_id_lin = self.all_cell_lin_ids
+
+        all_sess_id = np.concatenate((s_0_sess_id, s_1_sess_id))
+        all_cells_ids = np.concatenate((s_0_cells_id_lin, s_1_cells_id_lin))
+
+        out = np.vstack((all_cells_ids, all_sess_id))
+        return np.unique(out, axis=1)
+
+    @property
+    def neighbors(self):
+        all_neighbors = [l.neighbor.ravel() for l in self._sessions_pairs]
+        return np.concatenate(all_neighbors)
+
+    @property
+    def nearest_neighbor(self):
+        all_neighbors = [l.nearest_neighbor.ravel() for l in self._sessions_pairs]
+        return np.concatenate(all_neighbors)
 
     @property
     def distances(self):
@@ -159,28 +205,14 @@ class SessionPairList:
         return np.concatenate(all_distances)
 
     @property
-    def distances_neighbor(self):
-        all_distances = [
-            l.distcenters[l.neighbor].ravel() for l in self._sessions_pairs
-        ]
-        return np.concatenate(all_distances)
-
-    @property
     def correlations(self):
         all_distances = [l.correlations.ravel() for l in self._sessions_pairs]
-        return np.concatenate(all_distances)
-
-    @property
-    def correlations_neighbor(self):
-        all_distances = [
-            l.correlations[l.neighbor].ravel() for l in self._sessions_pairs
-        ]
         return np.concatenate(all_distances)
 
     def fit_distance_model(
         self, max_dist: int = 10, n_bins: int = 51, n_bins_out: int = 100
     ):
-        dist = self.distances_neighbor
+        dist = self.distances[self.neighbors]
         return fit_center_distribution(
             dist, max_dist=max_dist, n_bins=n_bins, n_bins_out=n_bins_out,
         )
@@ -191,7 +223,7 @@ class SessionPairList:
         print(
             "Implement correlation fitting for real, not this function is a place holder and return distance model"
         )
-        dist = self.correlations_neighbor
+        dist = self.correlations[self.neighbors]
         return fit_center_distribution(
             dist, max_dist=max_dist, n_bins=n_bins, n_bins_out=n_bins_out,
         )
@@ -202,7 +234,7 @@ class SessionPairList:
 
         if method == "distance":
             (dist_all, dist_same, _, x_est, _, _, _,) = fit_center_distribution(
-                self.distances_neighbor
+                self.distances[self.neighbors]
             )
             return calc_psame(dist_same, dist_all), x_est
 
@@ -236,8 +268,8 @@ class SessionPairList:
 
     def plot_join_distrib(self, n_bins=30):
 
-        d = self.distances_neighbor
-        c = self.correlations_neighbor
+        d = self.distances[self.neighbors]
+        c = self.correlations[self.neighbors]
 
         edges_dist = np.linspace(0, self.max_dist, n_bins)
         edges_corr = np.linspace(0, 1, n_bins)

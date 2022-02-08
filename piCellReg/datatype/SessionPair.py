@@ -394,7 +394,7 @@ class SessionPair:
     def plot_same_cell(self, idx_sess0=0, idx_sess1=0):
         plt.figure(figsize=(20, 10))
 
-        plt.subplot(1, 2, 1)
+        # plt.subplot(1, 2, 1)
         plt.imshow(
             self._session_0.get_projection(
                 x_offset=self._offsets_session_0[1],
@@ -403,7 +403,8 @@ class SessionPair:
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             ),
-            cmap="Blues",
+            alpha=0.3,
+            cmap="Greys",
             interpolation="nearest",
         )
         plt.imshow(
@@ -414,13 +415,12 @@ class SessionPair:
                 L_x=self._Lx_corrected,
                 L_y=self._Ly_corrected,
             ),
-            alpha=0.5,
-            cmap="Greens",
+            alpha=0.3,
+            cmap="Greys",
             interpolation="nearest",
         )
-        plt.axis("off")
 
-        plt.subplot(1, 2, 2)
+        # plt.subplot(1, 2, 2)
 
         hm0 = self._session_0.to_hot_mat(
             x_offset=self._offsets_session_0[1],
@@ -439,7 +439,7 @@ class SessionPair:
         )
 
         plt.imshow(
-            hm0[idx_sess0, :, :], cmap="Blues", interpolation="nearest",
+            hm0[idx_sess0, :, :], alpha=0.5, cmap="Blues", interpolation="nearest",
         )
         plt.imshow(
             hm1[idx_sess1, :, :], alpha=0.5, cmap="Greens", interpolation="nearest",

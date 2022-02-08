@@ -54,7 +54,6 @@ def clean_clusters(G: nx.Graph()):
 
         # now find if we have duplicate node in a layer
         tmp_sess_list = np.array([v["session"] for _, v in tmp_clust.nodes(data=True)])
-        tmp_node_id = np.array(tmp_clust.nodes())
         to_remove = None
 
         # if we have duplicate cell id in one of the session
@@ -67,7 +66,7 @@ def clean_clusters(G: nx.Graph()):
                     # we can have 2 cases:
                     #       only one edges nodes -> keep the one with strongest weight
                     #       one multiple and other one edges -> remove all the one edge
-                    id_clust = tmp_node_id[cand_m]
+                    id_clust = it_clust[cand_m]
                     n_edges_clust = np.array(
                         [len(tmp_clust.edges(e)) for e in id_clust]
                     )
@@ -97,22 +96,30 @@ def clean_clusters(G: nx.Graph()):
 
 
 def find_duplicated_nodes(G):
-    sess_list = np.array([v["session"] for _, v in G.nodes(data=True)])
-    node_id = np.array(G.nodes())
 
-    if len(set(sess_list)) < len(sess_list):
-        has_duplicate = []
-        no_duplicate = []
-        for id_sess in set(sess_list):
-            cand_m = sess_list == id_sess
-            if sum(cand_m) > 1:
-                # if the session as duplicate store the id
-                has_duplicate.append(node_id[cand_m])
-            else:
-                no_duplicate.append(node_id[cand_m])
-        return has_duplicate, np.concatenate(no_duplicate).tolist()
-    else:
-        return [], node_id
+    has_duplicate = []
+    no_duplicate = []
+
+    list_clusters = [c for c in nx.connected_components(G)]
+
+    for it_clust in list_clusters:
+        # take subgraph with only nodes from one cluster
+        tmp_clust = G.subgraph(it_clust)
+
+        sess_list = np.array([v["session"] for _, v in tmp_clust.nodes(data=True)])
+        node_id = np.array(tmp_clust.nodes())
+
+        if len(set(sess_list)) < len(sess_list):
+
+            for id_sess in set(sess_list):
+                cand_m = sess_list == id_sess
+                if sum(cand_m) > 1:
+                    # if the session as duplicate store the id
+                    has_duplicate.append(node_id[cand_m])
+                else:
+                    no_duplicate.append(node_id[cand_m])
+
+    return has_duplicate, no_duplicate
 
 
 def remove_duplicate(G):
