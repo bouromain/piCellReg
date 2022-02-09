@@ -138,9 +138,27 @@ for it_clust in list_clusters:
 # https://www.francescobonchi.com/CCtuto_kdd14.pdf
 # interesting 2 7 8
 
-aa = G.subgraph(list_clusters[8])
+aa = G.subgraph(list_clusters[7])
 sessions = {lab: v["session"] for lab, v in aa.nodes(data=True)}
-nx.draw(aa, labels=sessions, with_labels=True)
+nx.draw(aa, labels=sessions, with_labels=True)  #
+plt.show()
+
+
+##
+F = nx.fiedler_vector(aa)
+plt.plot(F)
+plt.show()
+
+n1 = np.array(aa.nodes())[F > 0]
+n2 = np.array(aa.nodes())[F < 0]
+
+g1 = aa.subgraph(n1)
+g2 = aa.subgraph(n2)
+
+plt.subplot(121)
+nx.draw(g1, with_labels=True)
+plt.subplot(122)
+nx.draw(g2, with_labels=True)
 plt.show()
 
 #### END FOR DEV
