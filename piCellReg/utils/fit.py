@@ -19,6 +19,10 @@ def lognormal(x: np.array, B: float, mu: float, sigma: float):
     )
 
 
+def neg_logifunc(x: np.array, x0: float, k: float):
+    return 1 - (1 / (1 + np.exp(-k * (x - x0))))
+
+
 def fit_func(
     x: np.array,
     A: float,
@@ -95,18 +99,40 @@ def fit_center_distribution(
     return (dist_all, dist_same, dist_different, x_est, intersect, E, sol)
 
 
-def calc_psame(dist_same, dist_all):
+def calc_psame(dist_same: np.ndarray, dist_all: np.ndarray, do_fit: bool = True):
+
+    n = dist_same.shape[0]
     # find p_same knowing the distance/corr
     p_same = dist_same / dist_all
-    # here we should may be fit a sigmoid distribution they do a little
-    # trick in their code by setting the first value of the distribution to the second value
-    # see line 73 of compute_centroid_distances_model
-    # this could be explained by the fact that the observed distribution is lognormal due to
-    # inacuracy in the alignment of the two image (we will never or rarely have a perfect alignment,
-    #  thus a drop at zero and a lognormal distribution ). However the real underlying distribution should
+    # here we can  fit a sigmoid distribution to avoid doing a little
+    # trick in their code by setting the first value of the distribution to
+    # the second value see line 73 of compute_centroid_distances_model
+    # this could be explained by the fact that the observed distribution is
+    # lognormal due to inacuracy in the alignment of the two images (we will
+    # never or rarely have a perfect alignment, thus a drop at zero and a
+    # lognormal distribution ). However the real underlying distribution should
     # be sigmoidal. This could justify a sigmoid fit here
     # eg we have P_same _obs (lognormal) we want p_same_expected (sigmoid)
-    return p_same
+    if do_fit:
+        print("fit")
+        p0 = [1, 0.5]
+        param_bounds = ([0, 0], [np.inf, np.inf])
+        mask_vals = np.zeros_like(p_same, dtype=bool)
+        mask_vals[3:] = True
+
+        centers = np.arange(n)
+
+        sol, _ = curve_fit(
+            neg_logifunc,
+            centers[mask_vals],
+            p_same[mask_vals],
+            bounds=param_bounds,
+            p0=p0,
+        )
+
+        return neg_logifunc(centers, *sol)
+    else:
+        return p_same
 
 
 def psame_matrix(dist, p_same_dist, p_same_centers):

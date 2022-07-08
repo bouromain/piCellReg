@@ -6,10 +6,11 @@ from piCellReg.datatype.Session import SessionList
 from piCellReg.datatype.SessionPair import SessionPair
 from piCellReg.datatype.SessionPairList import SessionPairList
 from piCellReg.utils.fit import fit_center_distribution, calc_psame, psame_matrix
-from piCellReg.utils.clustering import cluster_cell
+from piCellReg.utils.clustering import cluster_cell, find_duplicated_nodes
 
 import matplotlib.pyplot as plt
 import numpy as np
+import bottleneck as bn
 
 ## List of all sessions pairs
 # make a list of sessions
@@ -53,7 +54,7 @@ L = SessionPairList().from_SessionList(sess_list)
 
 # remove bad sessions
 # LL = L[[4, 5, 6, 7, 9]]  # [L[l] for l in [4, 5, 6, 7, 9]]
-LL = L[[0, 1, 3, 4, 6]]
+LL = L[[0, 1, 3, 4, 5]]
 
 # [l.plot() for l in LL]
 
@@ -62,27 +63,25 @@ LL = L[[0, 1, 3, 4, 6]]
 all_distances = LL.distances[LL.neighbors]
 (dist_all, dist_same, dist_different, x_est, _, _, s) = LL.fit_distance_model()
 
+## calculate psame and the psame matrix
+p_same, x_est = LL.get_psame_dist()
 
 # try to plot the histogram of cells distances
-# h = np.histogram(all_distances, bins=np.linspace(0, 10, 100), density=True)
+h = np.histogram(all_distances, bins=np.linspace(0, 10, 100), density=True)
 
 # plt.plot(h[1][:-1], h[0])
 # plt.plot(x_est, dist_all)
 # plt.plot(x_est, dist_same)
 # plt.plot(x_est, dist_different)
+# x_ps = bn.nanmax(np.nonzero(p_same>0.95))
+# plt.plot([ x_est[x_ps] , x_est[x_ps]], [0,0.5],"-r")
+# plt.ylim([0,0.35])
 # plt.show()
-
-
-## calculate psame and the psame matrix
-p_same, x_est = LL.get_psame_dist()
-
 
 ## output the distance of all the pairs of cells
 all_dist = LL.distances
 all_psame = psame_matrix(all_dist, p_same, x_est)
-all_psame = all_psame
 putative_same_mask = np.logical_and(all_psame > 0.05, LL.neighbors)
-
 
 ##### FOR DEV
 edges_list = LL.all_cell_lin_ids
@@ -116,7 +115,7 @@ big_G.add_weighted_edges_from(weigthed_edges_list)
 nx.set_node_attributes(big_G, session_list, "session")
 
 # find node that are duplicate (one cluster has several putative candidate in a session)
-duplicates_idx = find_duplicated_nodes(big_G)
+no_duplicate_idx, duplicates_idx = find_duplicated_nodes(big_G)
 
 
 ##
@@ -138,7 +137,7 @@ for it_clust in list_clusters:
 # https://www.francescobonchi.com/CCtuto_kdd14.pdf
 # interesting 2 7 8
 
-aa = G.subgraph(list_clusters[7])
+aa = G.subgraph(list_clusters[8])
 sessions = {lab: v["session"] for lab, v in aa.nodes(data=True)}
 nx.draw(aa, labels=sessions, with_labels=True)  #
 plt.show()
