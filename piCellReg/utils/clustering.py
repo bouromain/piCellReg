@@ -129,24 +129,24 @@ def remove_duplicate(G):
 
         dup_cells, no_dup_cells = find_duplicated_nodes(G.subgraph(it_clust))
         all_combination = list(product(*dup_cells))
-        all_weigth = [None] * len(all_combination)
+        all_weight = [None] * len(all_combination)
         all_node_out = [None] * len(all_combination)
 
         for i, e in enumerate(all_combination):
-            # look at the weigth for a subset of nodes
+            # look at the weight for a subset of nodes
             tmp_nodes = no_dup_cells + list(e)
             tmp_graph = G.subgraph(tmp_nodes)
 
             # iterate over all the possible combinations, split into subgraph
             # in case we create one by removing a node
-            # keep their id and the weigth
+            # keep their id and the weight
             all_node_out[i] = [e for e in nx.connected_components(tmp_graph)]
-            all_weigth[i] = [
+            all_weight[i] = [
                 G.subgraph(e).size(weight="weight")
                 for e in nx.connected_components(tmp_graph)
             ]
 
-            w = [sum(a) for a in all_weigth]
+            w = [sum(a) for a in all_weight]
             best_clustering = np.argmax(w)
 
             best_clusters = all_combination[best_clustering]
